@@ -1,8 +1,5 @@
 package dslab.util;
 
-import lombok.Setter;
-
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,9 +20,7 @@ public class MockServer implements Runnable {
     private final int port;
     private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
 
-    @Setter
     private String expectedMessage = "EXPECTED MESSAGE NOT SET";
-    @Setter
     private String response = "RESPONSE NOT SET";
 
     public MockServer(int port) {
@@ -111,5 +106,13 @@ public class MockServer implements Runnable {
 
     public int numberOfReceivedMsg() {
         return receivedMessages.size();
+    }
+
+    public void setExpectedMessage(String expectedMessage) {
+        this.expectedMessage = expectedMessage;
+    }
+
+    public void setResponse(String response) {
+        this.response = response;
     }
 }
