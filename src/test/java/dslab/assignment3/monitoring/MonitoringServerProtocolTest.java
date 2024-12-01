@@ -10,7 +10,6 @@ import dslab.util.Util;
 import dslab.util.grading.LocalGradingExtension;
 import dslab.util.grading.annotations.GitHubClassroomGrading;
 import dslab.util.helper.UdpClientHelper;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

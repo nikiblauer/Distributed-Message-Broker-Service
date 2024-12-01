@@ -2,7 +2,6 @@ package dslab.util.threads;
 
 import dslab.util.Constants;
 import dslab.util.helper.TelnetClientHelper;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 

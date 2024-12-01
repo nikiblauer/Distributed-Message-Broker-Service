@@ -7,7 +7,6 @@ import dslab.config.DNSServerConfig;
 import dslab.dns.IDNSServer;
 import dslab.util.*;
 import dslab.util.helper.TelnetClientHelper;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Timeout;

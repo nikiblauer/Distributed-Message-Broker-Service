@@ -5,7 +5,6 @@ import dslab.broker.IBroker;
 import dslab.config.BrokerConfig;
 import dslab.util.*;
 import dslab.util.helper.TelnetClientHelper;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Timeout;

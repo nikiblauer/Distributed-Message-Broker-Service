@@ -1,7 +1,6 @@
 package dslab.util.helper;
 
 import dslab.util.CommandBuilder;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.net.telnet.TelnetClient;
 
 import java.io.BufferedReader;

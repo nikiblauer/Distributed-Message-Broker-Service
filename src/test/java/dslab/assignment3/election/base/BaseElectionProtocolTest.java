@@ -7,7 +7,6 @@ import dslab.util.Constants;
 import dslab.util.helper.TelnetClientHelper;
 import dslab.util.ConfigFactory;
 import dslab.util.Util;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Timeout;
