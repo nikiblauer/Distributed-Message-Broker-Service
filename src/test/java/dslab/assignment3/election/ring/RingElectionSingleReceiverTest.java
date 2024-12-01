@@ -54,7 +54,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @MethodSource("source_ring_receivesElectOfHigherId_forwardsElect")
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker) throws IOException, InterruptedException {
-        receiver.setExceptedMessage(expectedMsgSentByBroker);
+        receiver.setExpectedMessage(expectedMsgSentByBroker);
         receiver.setResponse("ok");
 
         sender.connectAndReadResponse();
@@ -94,7 +94,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_receivesDeclareOfHigherId_forwardsDeclare() throws IOException, InterruptedException {
         final int leaderId = BROKER_ELECTION_ID + 1;
-        receiver.setExceptedMessage(declare(leaderId));
+        receiver.setExpectedMessage(declare(leaderId));
         receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
 
         sender.connectAndReadResponse();
@@ -109,7 +109,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_receivesDeclareOfOwnId_doesNotForwardDeclare() throws IOException {
         final int leaderId = BROKER_ELECTION_ID;
-        receiver.setExceptedMessage(declare(leaderId));
+        receiver.setExpectedMessage(declare(leaderId));
         receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
 
         sender.connectAndReadResponse();
@@ -123,7 +123,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_initiatesElection_sendsElectMessageToNextPeer() throws InterruptedException {
-        receiver.setExceptedMessage(elect(BROKER_ELECTION_ID));
+        receiver.setExpectedMessage(elect(BROKER_ELECTION_ID));
         receiver.setResponse("ok");
 
         broker.initiateElection();
@@ -137,7 +137,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_reachesTimeout_initiatesNewElection() throws InterruptedException {
         final int leaderId = BROKER_ELECTION_ID;
-        receiver.setExceptedMessage(elect(leaderId));
+        receiver.setExpectedMessage(elect(leaderId));
         receiver.setResponse("ok");
 
         // broker should realise that there is no leader by running into the timeout and start a new election

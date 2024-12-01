@@ -40,7 +40,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     void raft_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             System.out.println(receivers[i].getQueue());
-            receivers[i].setExceptedMessage(elect(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
             receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
         }
 
@@ -64,7 +64,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_initiatesElection_sendsElectMessageToPeers_doesNotBecomeLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(elect(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
             receivers[i].setResponse(vote(i, BROKER_ELECTION_ID + 1));
         }
 
@@ -82,7 +82,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_reachesTimeout_initiatesNewElection() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(elect(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
             receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
         }
 
@@ -96,7 +96,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(elect(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
             receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
         }
 
@@ -105,7 +105,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
         for (int i = 0; i < numOfReceivers; i++) assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
 
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(declare(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
             receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
         }
 
