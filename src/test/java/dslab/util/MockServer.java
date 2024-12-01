@@ -24,7 +24,7 @@ public class MockServer implements Runnable {
     private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
 
     @Setter
-    private String exceptedMessage = "EXCEPTED MESSAGE NOT SET";
+    private String expectedMessage = "EXPECTED MESSAGE NOT SET";
     @Setter
     private String response = "RESPONSE NOT SET";
 
@@ -79,12 +79,12 @@ public class MockServer implements Runnable {
         // No answer if response is set to blank
         if (response.isBlank()) return true;
 
-        if (exceptedMessage.equals("EXCEPTED MESSAGE NOT SET")) {
-            out.println("EXCEPTED MESSAGE NOT SET, PLEASE SET A EXPECTED MESSAGE");
+        if (expectedMessage.equals("EXPECTED MESSAGE NOT SET")) {
+            out.println("EXPECTED MESSAGE NOT SET, PLEASE SET A EXPECTED MESSAGE");
             return false;
         }
 
-        if (!read.equals(exceptedMessage)) {
+        if (!read.equals(expectedMessage)) {
             out.println(ERROR_RESPONSE);
             return false;
         }

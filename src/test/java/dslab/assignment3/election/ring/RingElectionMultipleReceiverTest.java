@@ -42,7 +42,7 @@ public class RingElectionMultipleReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_becomesLeader_startsSendingHeartbeatsToPeers() throws IOException, InterruptedException {
         // Setup receiver-0 for incoming declare msg
-        receiver.setExceptedMessage(declare(BROKER_ELECTION_ID));
+        receiver.setExpectedMessage(declare(BROKER_ELECTION_ID));
         receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
 
         // become leader by receiving elect <your-own-id>

@@ -51,7 +51,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(declare(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
             receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
         }
 
@@ -69,7 +69,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_receivesElectOfLowerId_initiatesNewElection_becomesLeader_sendsDeclare() throws IOException, InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(declare(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
             receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
         }
 
@@ -88,7 +88,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(declare(BROKER_ELECTION_ID));
+            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
             receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
         }
 
@@ -97,7 +97,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
         for (dslab.util.MockServer server : receivers) assertEquals(declare(BROKER_ELECTION_ID), server.takeMessage());
 
         for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExceptedMessage(ping());
+            receivers[i].setExpectedMessage(ping());
             receivers[i].setResponse(pong());
         }
 
