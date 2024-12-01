@@ -2,19 +2,16 @@ package dslab.util.threads;
 
 import dslab.util.Constants;
 import dslab.util.helper.TelnetClientHelper;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
-@Slf4j
 public class PublisherThread extends Thread {
 
-    final private TelnetClientHelper helper;
-
+    private final TelnetClientHelper helper;
+    private final String exchangeName;
+    private final String exchangeType;
+    private final String[] routingKeys;
     private final int messageCount;
-    final private String exchangeName;
-    final private String exchangeType;
-    final private String[] routingKeys;
 
 
     public PublisherThread(int remotePort, String exchangeName, String exchangeType, String[] routingKeys, int messageCount) {
@@ -34,10 +31,7 @@ public class PublisherThread extends Thread {
             int routingKeyIndex = 0;
 
             for (int i = 0; i < messageCount; i++) {
-                String msg = String.format("publish %s %s",
-                        routingKeys[(routingKeyIndex++) % routingKeys.length],
-                        String.format("Thread %d, Message %d", Thread.currentThread().threadId(), i + 1));
-                log.debug("Sending Message: {}", msg);
+                String msg = String.format("publish %s %s", routingKeys[(routingKeyIndex++) % routingKeys.length], String.format("Thread:%d,Message:%d", Thread.currentThread().threadId(), i + 1));
                 helper.sendCommandAndReadResponse(msg);
             }
             helper.disconnect();
@@ -52,7 +46,7 @@ public class PublisherThread extends Thread {
         try {
             helper.disconnect();
         } catch (IOException e) {
-            log.debug("Unable to shutdown", e);
+            // ignored
         }
     }
 }

@@ -12,21 +12,6 @@ import java.util.concurrent.TimeUnit;
 import static dslab.util.CommandBuilder.exchange;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * This test class validates various message routing scenarios involving different types of exchanges
- * (direct, fanout, and topic) with multiple publishers and subscribers. The test cases ensure correct message
- * delivery based on the exchange type and the associated routing keys.
- * <p>
- * The broker is created and run in a background thread during the test execution. Several Telnet clients are
- * utilized to simulate publishers and subscribers interacting with the broker over a network socket.
- * <p>
- * The class includes test cases for:
- * - Fanout exchange with two subscribers
- * - Direct exchange with multiple routing key bindings
- * - Topic exchange with various wildcard routing patterns
- * <p>
- * Each test is time-constrained to ensure the broker and communication threads are not blocked.
- */
 public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
 
     private final String exchangeName = String.format("exchange-%s", Global.SECURE_STRING_GENERATOR.getSecureString());
@@ -39,10 +24,10 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
 
     @Override
     protected void initTelnetClientHelpers() throws IOException {
-        publisher1 = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
-        publisher2 = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
-        subscriber1 = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
-        subscriber2 = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
+        publisher1 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
+        publisher2 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
+        subscriber1 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
+        subscriber2 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
     }
 
     @Override
@@ -53,12 +38,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         subscriber2.disconnect();
     }
 
-    /**
-     * Tests publishing to a fanout exchange with two subscribers.
-     * Verifies that both subscribers receive the messages, as a fanout exchange sends each message to all bound queues.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_fanout_exchange_two_subscribers_successfully() throws IOException {
@@ -82,13 +61,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber2.readResponse());
     }
 
-
-    /**
-     * Tests a direct exchange where two different routing keys are bound to the same queue.
-     * Verifies that messages published to both keys are correctly delivered to the single queue.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_direct_exchange_two_binding_keys_for_single_queue_successfully() throws IOException {
@@ -110,12 +82,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber1.readResponse());
     }
 
-    /**
-     * Tests a direct exchange where a single routing key routes messages to two queues.
-     * Verifies that both subscribers receive the message published with the shared routing key.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_direct_exchange_single_binding_key_for_two_queues_successfully() throws IOException {
@@ -140,18 +106,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber2.readResponse());
     }
 
-    /**
-     * Tests the routing behavior of a direct exchange where only valid routing keys route messages
-     * to the correct subscribers. Invalid routing keys should discard the messages.
-     * <p>
-     * Setup:
-     * <p>
-     * P1 --> key1 --> Queue 1 --> Sub 1
-     * P2 --> key2 --> Queue 2 --> Sub 2
-     * P2 --> keyBoth --> Queue 1 & Queue 2 --> Sub 1 & Sub 2
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_direct_exchange_only_routes_correct_successfully() throws IOException {
@@ -187,12 +141,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-3", subscriber2.readResponse());
     }
 
-    /**
-     * Tests a topic exchange where a queue is bound with multiple wildcard routing keys.
-     * Verifies that messages matching any of the wildcard patterns are correctly routed to the subscriber.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_topic_exchange_multiple_binding_keys_for_single_queue() throws IOException {
@@ -215,12 +163,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber1.readResponse());
     }
 
-    /**
-     * Tests a topic exchange where a single wildcard routing key routes messages to two queues.
-     * Verifies that both subscribers receive the messages when published with the matching routing pattern.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_topic_exchange_single_binding_key_for_two_queues() throws IOException {
@@ -246,13 +188,6 @@ public class SingleExchangeScenarioTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber2.readResponse());
     }
 
-
-    /**
-     * Tests the routing behavior of a topic exchange where only valid wildcard patterns route messages
-     * to the correct subscribers. Invalid routing patterns should discard the messages.
-     *
-     * @throws IOException if there is a network error during Telnet communication
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void publish_to_topic_exchange_two_subscribers_only_routes_correct_message_successfully() throws IOException {

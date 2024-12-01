@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class BrokerProtocolTest extends BaseSingleBrokerTest {
 
@@ -19,7 +21,7 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
 
     @Override
     protected void initTelnetClientHelpers() throws IOException {
-        helper = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
+        helper = new TelnetClientHelper(Constants.LOCALHOST, config.port());
     }
 
     @Override
@@ -27,16 +29,9 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
         helper.disconnect();
     }
 
-    /**
-     * All basic Broker Protocol tests. (Topic Exchange is handled in {@link TopicExchangePatternTest})
-     * These are combined in a singular test case to:
-     * - Make grading easier
-     * - Massively reduce computation time when executed on the github runner instance
-     */
     @Test
     @Timeout(value = 32000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void broker_protocol_tests() throws IOException {
-        // beforeEach() called by junit
         broker_accepts_connection_successfully();
         afterEach();
 
@@ -102,13 +97,8 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
 
         beforeEach();
         try_publish_before_declaring_exchange_unsuccessfully();
-        // afterEach() called by JUnit
     }
 
-    /**
-     * Tests if the broker is accepting a new client connection
-     * according to the protocol definition.
-     */
     void broker_accepts_connection_successfully() {
         assertDoesNotThrow(() -> helper.connectAndReadResponse());
     }
@@ -132,55 +122,30 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
         assertThat(response).contains("error");
     }
 
-    /**
-     * Tests if the broker is able to create a new direct exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void create_exchange_direct_successfully() throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse("exchange direct direct-%s".formatted(suffix));
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the broker is able to create a new fanout exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void create_exchange_fanout_successfully() throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse("exchange fanout fanout-%s".formatted(suffix));
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the broker is able to create a new topic exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void create_exchange_topic_successfully() throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse("exchange topic topic-%s".formatted(suffix));
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the broker is able to create a new queue.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void create_queue_successfully() throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse("queue queue-%s".formatted(suffix));
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the broker is able to bind a queue to an exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void bind_queue_to_exchange_no_routing_key_needed_successfully() throws IOException {
         helper.connectAndReadResponse();
 
@@ -195,12 +160,6 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
         response = helper.sendCommandAndReadResponse("bind none");
         assertEquals("ok", response);
     }
-
-    /**
-     * Tests if the broker is able to bind a queue to an exchange with a routing key.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
 
     void bind_queue_to_exchange_with_binding_key_successfully() throws IOException {
         helper.connectAndReadResponse();
@@ -223,19 +182,16 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
         String response;
 
         for (int i = 0; i < NUM_HELPERS; i++) {
-            helpers[i] = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
+            helpers[i] = new TelnetClientHelper(Constants.LOCALHOST, config.port());
             response = helpers[i].connectAndReadResponse();
             assertEquals("ok SMQP", response);
         }
 
-        for (int i = 0; i < NUM_HELPERS; i++) helpers[i].disconnect();
+        for (int i = 0; i < NUM_HELPERS; i++) {
+            helpers[i].disconnect();
+        }
     }
 
-    /**
-     * Tests if the broker is able to publish a message to an exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void publish_message_to_exchange_no_routing_key_needed_successfully() throws IOException {
         helper.connectAndReadResponse();
 
@@ -249,11 +205,6 @@ public class BrokerProtocolTest extends BaseSingleBrokerTest {
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the broker is able to publish a message to an exchange.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void publish_message_to_exchange_with_routing_key_successfully() throws IOException {
         final String routingKey = "rk-%s".formatted(suffix);
 

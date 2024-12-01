@@ -53,8 +53,8 @@ public class RaftElectionIntegrationTest extends BaseElectionIntegrationTest {
         String[] hostAndPortParts = waitForAndResolveDomain(leaderConfig.electionDomain()).split(":");
 
         assertAll(
-                () -> assertEquals(leaderConfig.hostname(), hostAndPortParts[0]),
-                () -> assertEquals(leaderConfig.brokerPort(), Integer.parseInt(hostAndPortParts[1]))
+                () -> assertEquals(leaderConfig.host(), hostAndPortParts[0]),
+                () -> assertEquals(leaderConfig.port(), Integer.parseInt(hostAndPortParts[1]))
         );
     }
 
@@ -78,8 +78,8 @@ public class RaftElectionIntegrationTest extends BaseElectionIntegrationTest {
         String[] hostAndPortParts = waitForAndResolveDomain(leaderConfig.electionDomain()).split(":");
 
         assertAll(
-                () -> assertEquals(leaderConfig.hostname(), hostAndPortParts[0]),
-                () -> assertEquals(leaderConfig.brokerPort(), Integer.parseInt(hostAndPortParts[1]))
+                () -> assertEquals(leaderConfig.host(), hostAndPortParts[0]),
+                () -> assertEquals(leaderConfig.port(), Integer.parseInt(hostAndPortParts[1]))
         );
     }
 }

@@ -1,7 +1,6 @@
 package dslab.util.helper;
 
 import dslab.util.CommandBuilder;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.net.telnet.TelnetClient;
 
 import java.io.BufferedReader;
@@ -14,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
-@Slf4j
 public class TelnetClientHelper {
 
     private final TelnetClient client;
@@ -47,7 +45,6 @@ public class TelnetClientHelper {
                     return true; // connectAndReadResponse() is blocking, so this is only reached if reading from the connection was successful
                 });
 
-        log.debug("Connection to the broker's socket established successfully.");
     }
 
     public String waitForDnsRegistration(String domainName) {

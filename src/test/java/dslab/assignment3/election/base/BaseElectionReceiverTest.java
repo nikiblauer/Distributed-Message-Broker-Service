@@ -5,7 +5,6 @@ import dslab.broker.IBroker;
 import dslab.config.BrokerConfig;
 import dslab.util.*;
 import dslab.util.helper.TelnetClientHelper;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Timeout;
@@ -20,7 +19,6 @@ import java.util.concurrent.TimeUnit;
  * protocol scenarios in a distributed system. Concrete subclasses should implement specific tests for
  * different election behaviors.</p>
  */
-@Slf4j
 public abstract class BaseElectionReceiverTest implements BaseElectionTest {
 
     protected static final int BROKER_ELECTION_ID = 100;
@@ -53,12 +51,10 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     @BeforeEach
     public void beforeEach() throws IOException {
-        log.debug("Execute beforeEach() - Starting the broker");
         broker = ComponentFactory.createBroker(config);
         brokerThread = new Thread(broker);
         brokerThread.start();
 
-        log.debug("Execute beforeEach() - Starting the receivers");
         receivers = new MockServer[numOfReceivers];
         receiverThreads = new Thread[numOfReceivers];
         for (int i = 0; i < numOfReceivers; i++) {
@@ -75,7 +71,6 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
         TelnetClientHelper waitForConnHelper = new TelnetClientHelper(Constants.LOCALHOST, config.electionPort());
         waitForConnHelper.waitForInitConnection();
         waitForConnHelper.disconnect();
-        log.debug("broker parent thread started");
 
         // If this helper connects successfully, then the mock server is ready to accept further connections
         for (int i = 0; i < numOfReceivers; i++) {
@@ -83,7 +78,6 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
             waitForConnHelper.waitForInitConnection();
             waitForConnHelper.disconnect();
         }
-        log.debug("receiver parent threads started");
 
         // Create helper and receiver to mimic adjacent Nodes in the ring
         sender = new TelnetClientHelper(Constants.LOCALHOST, config.electionPort());
@@ -94,46 +88,33 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
     public void afterEach() {
         receiver = null; // clear reference to receiver-0
 
-        log.debug("Execute afterEach() - Stopping the broker.");
         if (broker != null) {
-            log.debug("Invoking broker-0.shutdown()");
             broker.shutdown();
         }
 
-        log.debug("Execute afterEach() - Stopping the receivers.");
         for (int i = 0; i < receivers.length; i++) {
             if (receivers[i] != null) {
-                log.debug("Invoking receiver-{}.shutdown()", i);
                 receivers[i].shutdown();
             }
         }
 
         try {
-            log.debug("Waiting for broker to shut down");
             if (brokerThread != null && brokerThread.isAlive()) {
-                log.debug("broker thread  still alive.");
                 brokerThread.join();
-                log.debug("broker thread has finished.");
             }
 
-            log.debug("Waiting for receivers to shut down");
             for (Thread receiverThread : receiverThreads) {
                 if (receiverThread != null && receiverThread.isAlive()) {
-                    log.debug("receiver thread {} still alive.", receiverThread.getName());
                     receiverThread.join();
-                    log.debug("receiver thread {} has finished.", receiverThread.getName());
                 }
             }
 
         } catch (InterruptedException e) {
-            log.warn("broker thread interrupted.");
             Thread.currentThread().interrupt();
         }
 
-        log.debug("Waiting for connections on TCP ports to close");
-        Util.waitForTcpPortsToClose(config.brokerPort());
+        Util.waitForTcpPortsToClose(config.port());
         Util.waitForTcpPortsToClose(receiverPorts);
-        log.debug("All TCP Ports are closed");
     }
 
     /**
