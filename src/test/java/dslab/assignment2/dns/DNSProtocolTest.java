@@ -9,9 +9,13 @@ import org.junit.jupiter.api.Timeout;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.*;
+import static dslab.util.CommandBuilder.register;
+import static dslab.util.CommandBuilder.resolve;
+import static dslab.util.CommandBuilder.unregister;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class DNSProtocolTest extends BaseSingleDNSTest {
 
@@ -27,16 +31,9 @@ public class DNSProtocolTest extends BaseSingleDNSTest {
         helper.disconnect();
     }
 
-    /**
-     * All basic DNS Protocol tests.
-     * These are combined in a singular test case to:
-     * - Make grading easier
-     * - Massively reduce computation time when executed on the github runner instance
-     */
     @Test
     @Timeout(value = 26000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void dns_protocol_tests() throws IOException {
-        // beforeEach() called by JUnit
         dns_accepts_connection_successfully();
         afterEach();
 
@@ -82,23 +79,12 @@ public class DNSProtocolTest extends BaseSingleDNSTest {
 
         beforeEach();
         resolve_domain_wrong_syntax("resolve a b");
-        // afterEach() called by junit
     }
 
-    /**
-     * Tests if the dns server is accepting a new client connection
-     * according to the protocol definition.
-     */
     void dns_accepts_connection_successfully() {
         assertDoesNotThrow(() -> helper.connectAndReadResponse());
     }
 
-    /**
-     * Tests if the dns server is accepting a new client connection and sends ok SMQP back to the client
-     * according to the protocol definition.
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void correct_protocol_identifier_successfully() throws IOException {
         assertEquals("ok SDP", helper.connectAndReadResponse());
     }
@@ -114,11 +100,6 @@ public class DNSProtocolTest extends BaseSingleDNSTest {
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the dns server responds with an error message upon a wrong syntax
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void register_domain_wrong_syntax(String msg) throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse(msg);
@@ -134,11 +115,6 @@ public class DNSProtocolTest extends BaseSingleDNSTest {
         assertEquals("ok", response);
     }
 
-    /**
-     * Tests if the dns server responds with an error message upon a wrong syntax
-     *
-     * @throws IOException Thrown by the telnet client helper if a connection is not possible.
-     */
     void unregister_domain_wrong_syntax(String msg) throws IOException {
         helper.connectAndReadResponse();
         String response = helper.sendCommandAndReadResponse(msg);

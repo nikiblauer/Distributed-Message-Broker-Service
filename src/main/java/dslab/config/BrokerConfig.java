@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public record BrokerConfig(
         String componentId,
-        String hostname,
-        int brokerPort,
+        String host,
+        int port,
         String dnsHost,
         int dnsPort,
         String domain,
@@ -26,14 +26,14 @@ public record BrokerConfig(
         if (o == null || getClass() != o.getClass()) return false;
         BrokerConfig that = (BrokerConfig) o;
         return dnsPort == that.dnsPort &&
-                brokerPort == that.brokerPort &&
+                port == that.port &&
                 electionId == that.electionId &&
                 electionPort == that.electionPort &&
                 electionHeartbeatTimeoutMs == that.electionHeartbeatTimeoutMs &&
                 monitoringPort == that.monitoringPort &&
                 Objects.equals(domain, that.domain) &&
                 Objects.equals(dnsHost, that.dnsHost) &&
-                Objects.equals(hostname, that.hostname) &&
+                Objects.equals(host, that.host) &&
                 Objects.equals(componentId, that.componentId) &&
                 Objects.equals(electionType, that.electionType) &&
                 Objects.equals(electionDomain, that.electionDomain) &&

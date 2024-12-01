@@ -131,7 +131,7 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
         }
 
         log.debug("Waiting for connections on TCP ports to close");
-        Util.waitForTcpPortsToClose(config.brokerPort());
+        Util.waitForTcpPortsToClose(config.port());
         Util.waitForTcpPortsToClose(receiverPorts);
         log.debug("All TCP Ports are closed");
     }

@@ -78,7 +78,7 @@ public class MonitoringServerIntegrationTest {
         // Probe if the socket is up and ready for commands
         // If this helper connects successfully, then the broker is ready to accept further connections
         for (int i = 0; i < NUM_BROKERS; i++) {
-            TelnetClientHelper waitForBrokerConnHelper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[i].brokerPort());
+            TelnetClientHelper waitForBrokerConnHelper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[i].port());
             waitForBrokerConnHelper.waitForInitConnection();
             waitForBrokerConnHelper.disconnect();
             log.debug("broker parent thread {} started", i);
@@ -124,9 +124,9 @@ public class MonitoringServerIntegrationTest {
         }
 
         for (BrokerConfig config : brokerConfigs) {
-            log.debug("Waiting for connections on TCP ports {}, {} to close", config.brokerPort(), config.electionPort());
-            Util.waitForTcpPortsToClose(config.brokerPort(), config.electionPort());
-            log.debug("TCP Sockets on ports {}, {} are closed", config.brokerPort(), config.electionPort());
+            log.debug("Waiting for connections on TCP ports {}, {} to close", config.port(), config.electionPort());
+            Util.waitForTcpPortsToClose(config.port(), config.electionPort());
+            log.debug("TCP Sockets on ports {}, {} are closed", config.port(), config.electionPort());
         }
     }
 
@@ -137,7 +137,7 @@ public class MonitoringServerIntegrationTest {
         final int numberOfMessages = 4;
 
         // Setup exchange queues for broker 0
-        TelnetClientHelper helper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[0].brokerPort());
+        TelnetClientHelper helper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[0].port());
         helper.connectAndReadResponse();
         helper.sendCommandAndReadResponse(exchange("direct", "direct-0"));
         helper.sendCommandAndReadResponse(queue("queue-0"));
@@ -151,7 +151,7 @@ public class MonitoringServerIntegrationTest {
         helper.disconnect();
 
         // Setup exchange queues for broker 1
-        helper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[1].brokerPort());
+        helper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[1].port());
         helper.connectAndReadResponse();
         helper.sendCommandAndReadResponse(exchange("direct", "direct-0"));
         helper.sendCommandAndReadResponse(queue("queue-0"));
@@ -163,9 +163,9 @@ public class MonitoringServerIntegrationTest {
 
         assertEquals(numberOfMessages, monitoringServer.receivedMessages());
         assertThat(monitoringServer.getStatistics()).contains(
-                String.format("%s:%d", brokerConfigs[0].hostname(), brokerConfigs[0].brokerPort()),
+                String.format("%s:%d", brokerConfigs[0].host(), brokerConfigs[0].port()),
                 "key.zero 2", "key.one 1",
-                String.format("%s:%d", brokerConfigs[1].hostname(), brokerConfigs[1].brokerPort()),
+                String.format("%s:%d", brokerConfigs[1].host(), brokerConfigs[1].port()),
                 "key.special 1");
     }
 }

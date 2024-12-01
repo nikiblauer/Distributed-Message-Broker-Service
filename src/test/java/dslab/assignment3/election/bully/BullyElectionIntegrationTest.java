@@ -52,8 +52,8 @@ public class BullyElectionIntegrationTest extends BaseElectionIntegrationTest {
 
         assertAll(
                 "Grouped Assertions of User",
-                () -> assertEquals(leaderConfig.hostname(), hostAndPortParts[0]),
-                () -> assertEquals(leaderConfig.brokerPort(), Integer.parseInt(hostAndPortParts[1]))
+                () -> assertEquals(leaderConfig.host(), hostAndPortParts[0]),
+                () -> assertEquals(leaderConfig.port(), Integer.parseInt(hostAndPortParts[1]))
         );
     }
 
@@ -78,8 +78,8 @@ public class BullyElectionIntegrationTest extends BaseElectionIntegrationTest {
 
         assertAll(
                 "Grouped Assertions of User",
-                () -> assertEquals(leaderConfig.hostname(), hostAndPortParts[0]),
-                () -> assertEquals(leaderConfig.brokerPort(), Integer.parseInt(hostAndPortParts[1]))
+                () -> assertEquals(leaderConfig.host(), hostAndPortParts[0]),
+                () -> assertEquals(leaderConfig.port(), Integer.parseInt(hostAndPortParts[1]))
         );
     }
 }

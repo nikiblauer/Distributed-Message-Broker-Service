@@ -9,10 +9,14 @@ import org.junit.jupiter.api.Timeout;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.*;
+import static dslab.util.CommandBuilder.register;
+import static dslab.util.CommandBuilder.resolve;
+import static dslab.util.CommandBuilder.unregister;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BasicDNSTest extends BaseSingleDNSTest {
 
@@ -29,24 +33,16 @@ public class BasicDNSTest extends BaseSingleDNSTest {
         helper.disconnect();
     }
 
-    /**
-     * Tests if the dns server shutdown routine is not throwing any errors or exceptions on multiple shutdown invocations.
-     */
     @Test
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void dns_shutdown_successfully() {
         assertDoesNotThrow(() -> dnsServer.shutdown(), "An unhandled exception occurred during the shutdown of the broker.");
-
-        // Use Awaitility to wait until the broker thread is no longer alive
         await().atMost(2, TimeUnit.SECONDS).pollInterval(5, TimeUnit.MILLISECONDS).untilAsserted(() -> assertThat(dnsThread.isAlive()).isFalse());
 
-        // TCP client to attempt connection after shutdown
-        TelnetClientHelper h1 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
-
-        // Use Awaitility to ensure that the connection fails, as the broker should no longer accept connections
+        TelnetClientHelper helper = new TelnetClientHelper(Constants.LOCALHOST, config.port());
         await().atMost(1, TimeUnit.SECONDS).pollInterval(5, TimeUnit.MILLISECONDS).untilAsserted(() -> assertThrows(IOException.class, () -> {
-            h1.connectAndReadResponse();
-            h1.disconnect();
+            helper.connectAndReadResponse();
+            helper.disconnect();
         }));
     }
 

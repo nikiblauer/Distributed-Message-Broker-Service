@@ -118,9 +118,9 @@ public abstract class BaseElectionIntegrationTest implements BaseElectionTest, B
         }
 
         for (BrokerConfig config : brokerConfigs) {
-            log.debug("Waiting for connections on TCP ports {}, {} to close", config.brokerPort(), config.electionPort());
-            Util.waitForTcpPortsToClose(config.brokerPort(), config.electionPort());
-            log.debug("TCP Sockets on ports {}, {} are closed", config.brokerPort(), config.electionPort());
+            log.debug("Waiting for connections on TCP ports {}, {} to close", config.port(), config.electionPort());
+            Util.waitForTcpPortsToClose(config.port(), config.electionPort());
+            log.debug("TCP Sockets on ports {}, {} are closed", config.port(), config.electionPort());
         }
 
         log.debug("Waiting for connections on TCP ports {} to close", dnsConfig.port());

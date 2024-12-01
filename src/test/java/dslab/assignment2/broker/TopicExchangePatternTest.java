@@ -24,8 +24,8 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
 
     @Override
     protected void initTelnetClientHelpers() throws IOException {
-        publisher = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
-        subscriber = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
+        publisher = new TelnetClientHelper(Constants.LOCALHOST, config.port());
+        subscriber = new TelnetClientHelper(Constants.LOCALHOST, config.port());
 
         subscriber.connectAndReadResponse();
         publisher.connectAndReadResponse();
@@ -40,7 +40,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
     @Test
     @Timeout(value = 3500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void star_pattern_tests() throws IOException {
-        // beforeEach() called by junit
         single_star_successfully();
         afterEach();
 
@@ -58,13 +57,11 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
 
         beforeEach();
         two_stars_edge_unsuccessfully();
-        // afterEach() called by junit
     }
 
     @Test
     @Timeout(value = 2500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void hashtag_pattern_tests() throws IOException {
-        // beforeEach() called by JUnit
         single_hashtag_successfully();
         afterEach();
 
@@ -74,39 +71,24 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
 
         beforeEach();
         two_hashtags_successfully();
-        // afterEach() called by JUnit
     }
 
     @Test
     @Timeout(value = 2500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void basic_logic_tests() throws IOException {
-        // beforeEach() called by JUnit
         basic_key_no_placeholders_successfully();
         afterEach();
 
         beforeEach();
         two_matching_keys_successfully();
-        // afterEach() called by JUnit
     }
 
-    /**
-     * Tests the topic exchange pattern where the binding key does not contain any placeholders.
-     * The message is expected to be routed to the correct subscriber.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void basic_key_no_placeholders_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("%s.at", keyBase));
         publisher.publish(exchangeName, "topic", String.format("%s.at", keyBase), "VERIFICATION-MESSAGE");
         assertEquals("VERIFICATION-MESSAGE", subscriber.readResponse());
     }
 
-    /**
-     * Tests a topic exchange pattern where the binding key contains a single '*' placeholder.
-     * The message is expected to match and be routed to the correct subscriber.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void single_star_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, "company.*");
 
@@ -115,12 +97,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where messages should not be routed to a subscriber due to incorrect
-     * key matching with the '*' placeholder in the binding key. Only valid messages will be routed.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void single_star_unsuccessfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("%s.*", keyBase));
 
@@ -136,12 +112,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where the binding key contains two '*' placeholders and successfully
-     * matches messages that follow the pattern.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void two_stars_edge_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("*.%s.*", keyBase));
 
@@ -153,12 +123,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where two '*' placeholders are used in between words of the binding key.
-     * Messages following this pattern will be routed successfully.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void two_stars_in_between_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("www.*.%s.*", keyBase));
 
@@ -170,12 +134,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-2", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where the message routing fails due to incorrect usage of the '*' placeholder
-     * in the binding key. Only messages matching the correct pattern will be routed.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void two_stars_edge_unsuccessfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("*.%s.*", keyBase));
 
@@ -193,12 +151,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where the binding key uses a single '#' placeholder, allowing the message
-     * to match multiple levels in the routing key. All matching messages are routed.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void single_hashtag_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("%s.#", keyBase));
 
@@ -214,12 +166,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-4", subscriber.readResponse());
     }
 
-    /**
-     * Tests that messages do not arrive when the binding key uses a single '#' placeholder,
-     * but the routing key does not match the pattern.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void single_hashtag_unsuccessfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("%s.#", keyBase));
 
@@ -232,12 +178,6 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE", subscriber.readResponse());
     }
 
-    /**
-     * Tests the case where the binding key uses two '#' placeholders to allow messages with multiple
-     * levels in the routing key. The test ensures that all matching messages are successfully routed.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void two_hashtags_successfully() throws IOException {
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("#.%s.#", keyBase));
 
@@ -255,14 +195,8 @@ public class TopicExchangePatternTest extends BaseSingleBrokerTest {
         assertEquals("VERIFICATION-MESSAGE-5", subscriber.readResponse());
     }
 
-    /**
-     * Tests the scenario where two subscribers with different binding keys are subscribed to the
-     * same exchange. Both subscribers are expected to receive the message if their keys match.
-     *
-     * @throws IOException if there is an error in communication
-     */
     void two_matching_keys_successfully() throws IOException {
-        TelnetClientHelper subscriber2 = new TelnetClientHelper(Constants.LOCALHOST, config.brokerPort());
+        TelnetClientHelper subscriber2 = new TelnetClientHelper(Constants.LOCALHOST, config.port());
         subscriber2.connectAndReadResponse();
 
         subscriber.subscribe(exchangeName, "topic", queueName, String.format("%s.#", keyBase));
