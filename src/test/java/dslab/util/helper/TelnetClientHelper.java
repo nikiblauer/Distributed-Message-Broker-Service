@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
-@Slf4j
 public class TelnetClientHelper {
 
     private final TelnetClient client;
@@ -47,7 +46,6 @@ public class TelnetClientHelper {
                     return true; // connectAndReadResponse() is blocking, so this is only reached if reading from the connection was successful
                 });
 
-        log.debug("Connection to the broker's socket established successfully.");
     }
 
     public String waitForDnsRegistration(String domainName) {

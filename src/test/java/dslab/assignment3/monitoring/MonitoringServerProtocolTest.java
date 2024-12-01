@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * <p>Tests involve creating a monitoring server instance, sending messages to it, and
  * checking that the server correctly records the messages and maintains the expected statistics.</p>
  */
-@Slf4j
 @ExtendWith(LocalGradingExtension.class)
 public class MonitoringServerProtocolTest {
 
@@ -49,16 +48,11 @@ public class MonitoringServerProtocolTest {
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     @BeforeEach
     public void beforeEach() throws IOException {
-        log.debug("Execute beforeEach() - Creating the monitoring server");
-
-
         monitoringServer = ComponentFactory.createMonitoringServer(config);
 
         // Run the monitoring server in a background thread since it blocks the test process
         monitoringServerThread = new Thread(monitoringServer);
         monitoringServerThread.start();
-
-        log.debug("Monitoring server parent thread started");
 
         // Setup helper for tcp communication
         helper = new UdpClientHelper(Constants.LOCALHOST, config.monitoringPort());
@@ -72,21 +66,16 @@ public class MonitoringServerProtocolTest {
     @AfterEach
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     public void afterEach() {
-        log.debug("Execute afterEach() - disconnecting the udp helper");
         helper.disconnect();
 
-        log.debug("Execute afterEach() - Stopping the monitoring server.");
         if (monitoringServer != null) monitoringServer.shutdown();
 
         try {
             // Wait for the monitoring server thread to shut down
             if (monitoringServerThread != null && monitoringServerThread.isAlive()) {
-                log.debug("Broker thread still alive.");
                 monitoringServerThread.join();
-                log.debug("Broker thread has finished.");
             }
         } catch (InterruptedException e) {
-            log.warn("Monitoring thread interrupted.");
             Thread.currentThread().interrupt();
         }
     }

@@ -17,7 +17,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * Only supports a single connection
  */
-@Slf4j
 public class MockServer implements Runnable {
 
     private static final String ERROR_RESPONSE = "INVALID MESSAGE RECEIVED";
@@ -39,18 +38,13 @@ public class MockServer implements Runnable {
     public void run() {
         try (ServerSocket socket = new ServerSocket(port)) {
             this.socket = socket;
-            log.debug("Listening on port {}", port);
 
             while (true) {
                 Socket conn = socket.accept();
                 handleConnection(conn);
             }
-        } catch (SocketException e) {
-            log.debug("Socket closed, stopping server socket port {}", port);
-            // ignore, socket closed
         } catch (IOException e) {
-            log.debug("Encountered IOException, stopping server socket port {}", port);
-            //
+            // ignored
         } finally {
             shutdown();
         }
@@ -61,7 +55,6 @@ public class MockServer implements Runnable {
              BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
              PrintStream out = new PrintStream(conn.getOutputStream(), true)) {
 
-            log.debug("accepted connection from {}", conn.getRemoteSocketAddress());
 
             out.println("ok LEP");
             while (true) {
@@ -74,7 +67,7 @@ public class MockServer implements Runnable {
             }
 
         } catch (IOException e) {
-            log.debug("Encountered IOException, closing connection with socket {}", conn);
+            // ignored
         }
     }
 
@@ -106,7 +99,7 @@ public class MockServer implements Runnable {
         try {
             if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            log.warn("Unable to close socket of receiver.", e);
+            // ignored
         }
     }
 

@@ -38,7 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * them, and ensuring that the brokers send monitoring data correctly upon receiving messages.
  * The Awaitility framework is used to handle asynchronous behavior and waiting conditions.</p>
  */
-@Slf4j
 @ExtendWith(LocalGradingExtension.class)
 public class MonitoringServerIntegrationTest {
 
@@ -55,14 +54,12 @@ public class MonitoringServerIntegrationTest {
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     @BeforeEach
     public void beforeEach() throws IOException {
-        log.debug("Execute beforeEach() - Creating the monitoring server");
         monitoringServer = ComponentFactory.createMonitoringServer(monitoringServerConfig);
 
         // Run the monitoring server in a background thread since it blocks the test process
         monitoringServerThread = new Thread(monitoringServer);
         monitoringServerThread.start();
 
-        log.debug("Execute beforeEach() - Creating the brokers");
         for (int i = 0; i < NUM_BROKERS; i++) {
             brokers[i] = ComponentFactory.createBroker(brokerConfigs[i]);
             brokerThreads[i] = new Thread(brokers[i]);
@@ -73,7 +70,6 @@ public class MonitoringServerIntegrationTest {
                 .atMost(1, TimeUnit.SECONDS)                // Maximum wait time (adjust as needed)
                 .pollInterval(10, TimeUnit.MILLISECONDS)   // Poll every 50 milliseconds
                 .until(() -> Util.isUdpPortListening(Constants.LOCALHOST, monitoringServerConfig.monitoringPort()));
-        log.debug("monitoring server parent thread started");
 
         // Probe if the socket is up and ready for commands
         // If this helper connects successfully, then the broker is ready to accept further connections
@@ -81,52 +77,38 @@ public class MonitoringServerIntegrationTest {
             TelnetClientHelper waitForBrokerConnHelper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[i].port());
             waitForBrokerConnHelper.waitForInitConnection();
             waitForBrokerConnHelper.disconnect();
-            log.debug("broker parent thread {} started", i);
         }
     }
 
     @AfterEach
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     public void afterEach() {
-        log.debug("Execute afterEach() - Stopping the monitoring server");
         if (monitoringServer != null) {
-            log.debug("Invoking monitoring server.shutdown()");
             monitoringServer.shutdown();
         }
 
-        log.debug("Execute afterEach() - Stopping the brokers.");
         for (int i = 0; i < NUM_BROKERS; i++) {
             if (brokers[0] != null) {
-                log.debug("Invoking broker-{}.shutdown()", i);
                 brokers[i].shutdown();
             }
         }
 
         try {
-            log.debug("Waiting for monitoring server to shut down");
             if (monitoringServerThread != null && monitoringServerThread.isAlive()) {
-                log.debug("monitoring server thread still alive.");
                 monitoringServerThread.join();
-                log.debug("monitoring server thread has finished.");
             }
 
-            log.debug("Waiting for broker to shut down");
             for (int i = 0; i < NUM_BROKERS; i++) {
                 if (brokerThreads[i] != null && brokerThreads[i].isAlive()) {
-                    log.debug("broker thread {} still alive.", i);
                     brokerThreads[i].join();
-                    log.debug("broker thread {} has finished.", i);
                 }
             }
         } catch (InterruptedException e) {
-            log.warn("monitoring or broker thread interrupted.");
             Thread.currentThread().interrupt();
         }
 
         for (BrokerConfig config : brokerConfigs) {
-            log.debug("Waiting for connections on TCP ports {}, {} to close", config.port(), config.electionPort());
             Util.waitForTcpPortsToClose(config.port(), config.electionPort());
-            log.debug("TCP Sockets on ports {}, {} are closed", config.port(), config.electionPort());
         }
     }
 

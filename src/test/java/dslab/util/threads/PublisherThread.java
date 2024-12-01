@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
-@Slf4j
 public class PublisherThread extends Thread {
 
     final private TelnetClientHelper helper;
@@ -37,7 +36,6 @@ public class PublisherThread extends Thread {
                 String msg = String.format("publish %s %s",
                         routingKeys[(routingKeyIndex++) % routingKeys.length],
                         String.format("Thread %d, Message %d", Thread.currentThread().threadId(), i + 1));
-                log.debug("Sending Message: {}", msg);
                 helper.sendCommandAndReadResponse(msg);
             }
             helper.disconnect();
@@ -52,7 +50,7 @@ public class PublisherThread extends Thread {
         try {
             helper.disconnect();
         } catch (IOException e) {
-            log.debug("Unable to shutdown", e);
+            // ignored
         }
     }
 }

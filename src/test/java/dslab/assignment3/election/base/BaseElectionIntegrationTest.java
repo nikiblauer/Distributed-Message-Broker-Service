@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
  * specific tests for broker election scenarios by leveraging the setup and teardown methods
  * defined in this base class.</p>
  */
-@Slf4j
 public abstract class BaseElectionIntegrationTest implements BaseElectionTest, BaseElectionScalableTest {
 
     protected final int NUM_BROKERS = getNumOfBrokers();
@@ -42,7 +41,6 @@ public abstract class BaseElectionIntegrationTest implements BaseElectionTest, B
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     @BeforeEach
     public void beforeEach() throws IOException {
-        log.debug("Execute beforeEach() - Creating the dns server");
         dnsServer = ComponentFactory.createDNSServer(dnsConfig);
         dnsThread = new Thread(dnsServer);
         dnsThread.start();
@@ -55,7 +53,6 @@ public abstract class BaseElectionIntegrationTest implements BaseElectionTest, B
         brokers = new IBroker[NUM_BROKERS];
         brokerThreads = new Thread[NUM_BROKERS];
 
-        log.debug("Execute beforeEach() - Creating the brokers");
         for (int i = 0; i < brokers.length; i++) {
             brokers[i] = ComponentFactory.createBroker(brokerConfigs[i]);
             brokerThreads[i] = new Thread(brokers[i]);
@@ -66,7 +63,6 @@ public abstract class BaseElectionIntegrationTest implements BaseElectionTest, B
         TelnetClientHelper waitForDnsConnHelper = new TelnetClientHelper(Constants.LOCALHOST, dnsConfig.port());
         waitForDnsConnHelper.waitForInitConnection();
         waitForDnsConnHelper.disconnect();
-        log.debug("dns server parent thread started");
 
         // Probe if the socket is up and ready for commands
         // If this helper connects successfully, then the broker is ready to accept further connections
@@ -74,58 +70,42 @@ public abstract class BaseElectionIntegrationTest implements BaseElectionTest, B
             TelnetClientHelper waitForBrokerConnHelper = new TelnetClientHelper(Constants.LOCALHOST, brokerConfigs[i].electionPort());
             waitForBrokerConnHelper.waitForInitConnection();
             waitForBrokerConnHelper.disconnect();
-            log.debug("broker-thread-{} parent thread  started", i);
         }
     }
 
     @AfterEach
     @Timeout(value = 1500, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     public void afterEach() {
-        log.debug("Execute afterEach() - Stopping the dns");
         if (dnsServer != null) {
-            log.debug("Invoking dns server.shutdown()");
             dnsServer.shutdown();
         }
 
-        log.debug("Execute afterEach() - Stopping the brokers.");
         for (int i = 0; i < NUM_BROKERS; i++) {
             if (brokers[i] != null) {
-                log.debug("Invoking broker-{}.shutdown()", i);
                 brokers[i].shutdown();
             }
         }
 
         try {
-            log.debug("Waiting for DNS to shut down");
             if (dnsThread != null && dnsThread.isAlive()) {
-                log.debug("dns server thread still alive.");
                 dnsThread.join();
-                log.debug("dns server thread has finished.");
             }
 
-            log.debug("Waiting for broker to shut down");
             for (int i = 0; i < NUM_BROKERS; i++) {
                 if (brokerThreads[i] != null && brokerThreads[i].isAlive()) {
-                    log.debug("broker thread {} still alive.", i);
                     brokerThreads[i].join();
-                    log.debug("broker thread {} has finished.", i);
                 }
             }
 
         } catch (InterruptedException e) {
-            log.warn("dns or broker thread interrupted.", e);
             Thread.currentThread().interrupt();
         }
 
         for (BrokerConfig config : brokerConfigs) {
-            log.debug("Waiting for connections on TCP ports {}, {} to close", config.port(), config.electionPort());
             Util.waitForTcpPortsToClose(config.port(), config.electionPort());
-            log.debug("TCP Sockets on ports {}, {} are closed", config.port(), config.electionPort());
         }
 
-        log.debug("Waiting for connections on TCP ports {} to close", dnsConfig.port());
         Util.waitForTcpPortsToClose(dnsConfig.port());
-        log.debug("TCP Sockets on ports {} are closed", dnsConfig.port());
     }
 
     /**
