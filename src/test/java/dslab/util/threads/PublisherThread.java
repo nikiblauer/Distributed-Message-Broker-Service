@@ -8,12 +8,11 @@ import java.io.IOException;
 
 public class PublisherThread extends Thread {
 
-    final private TelnetClientHelper helper;
-
+    private final TelnetClientHelper helper;
+    private final String exchangeName;
+    private final String exchangeType;
+    private final String[] routingKeys;
     private final int messageCount;
-    final private String exchangeName;
-    final private String exchangeType;
-    final private String[] routingKeys;
 
 
     public PublisherThread(int remotePort, String exchangeName, String exchangeType, String[] routingKeys, int messageCount) {
@@ -33,9 +32,7 @@ public class PublisherThread extends Thread {
             int routingKeyIndex = 0;
 
             for (int i = 0; i < messageCount; i++) {
-                String msg = String.format("publish %s %s",
-                        routingKeys[(routingKeyIndex++) % routingKeys.length],
-                        String.format("Thread %d, Message %d", Thread.currentThread().threadId(), i + 1));
+                String msg = String.format("publish %s %s", routingKeys[(routingKeyIndex++) % routingKeys.length], String.format("Thread:%d,Message:%d", Thread.currentThread().threadId(), i + 1));
                 helper.sendCommandAndReadResponse(msg);
             }
             helper.disconnect();
