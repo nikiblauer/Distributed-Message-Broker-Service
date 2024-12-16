@@ -17,6 +17,7 @@ public class MockServer implements Runnable {
     private static final String ERROR_RESPONSE = "INVALID MESSAGE RECEIVED";
 
     private ServerSocket socket;
+    private int electionId;
     private final int port;
     private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
 
@@ -25,6 +26,12 @@ public class MockServer implements Runnable {
 
     public MockServer(int port) {
         this.port = port;
+        this.electionId = 0;
+    }
+
+    public MockServer(int port, int electionId) {
+        this.port = port;
+        this.electionId = electionId;
     }
 
     @Override
@@ -114,5 +121,13 @@ public class MockServer implements Runnable {
 
     public void setResponse(String response) {
         this.response = response;
+    }
+
+    public void setElectionId(int electionId) {
+        this.electionId = electionId;
+    }
+
+    public int getElectionId() {
+        return electionId;
     }
 }

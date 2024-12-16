@@ -1,15 +1,19 @@
 package dslab.assignment3.election.raft;
 
 import dslab.assignment3.election.base.BaseElectionReceiverTest;
-import dslab.util.grading.annotations.GitHubClassroomGrading;
 import dslab.util.grading.LocalGradingExtension;
+import dslab.util.grading.annotations.GitHubClassroomGrading;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.*;
+import static dslab.util.CommandBuilder.ack;
+import static dslab.util.CommandBuilder.declare;
+import static dslab.util.CommandBuilder.elect;
+import static dslab.util.CommandBuilder.ping;
+import static dslab.util.CommandBuilder.vote;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -39,20 +43,17 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
-            System.out.println(receivers[i].getQueue());
             receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
+            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
         }
 
         broker.initiateElection();
 
         for (int i = 0; i < numOfReceivers; i++) {
-            System.out.println(receivers[i].getQueue());
             assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
         }
 
         for (int i = 0; i < numOfReceivers; i++) {
-            System.out.println(receivers[i].getQueue());
             assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
         }
 
@@ -65,7 +66,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     void raft_initiatesElection_sendsElectMessageToPeers_doesNotBecomeLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(i, BROKER_ELECTION_ID + 1));
+            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID + 1));
         }
 
         broker.initiateElection();
@@ -74,7 +75,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
             assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
         }
 
-       assertThat(broker.getLeader()).isLessThan(0);
+        assertThat(broker.getLeader()).isLessThan(0);
     }
 
     @GitHubClassroomGrading(maxScore = 2)
@@ -83,7 +84,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     void raft_reachesTimeout_initiatesNewElection() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
+            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
         }
 
         for (int i = 0; i < numOfReceivers; i++) {
@@ -97,7 +98,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     void raft_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(i, BROKER_ELECTION_ID));
+            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
         }
 
         broker.initiateElection();
