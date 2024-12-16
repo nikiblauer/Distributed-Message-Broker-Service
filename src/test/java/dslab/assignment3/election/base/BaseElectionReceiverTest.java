@@ -23,7 +23,7 @@ public abstract class BaseElectionReceiverTest implements BaseElectionTest {
 
     protected static final int BROKER_ELECTION_ID = Global.SECURE_INT_GENERATOR.getInt(10, 100);
 
-    protected int numOfReceivers = getNumOfReceivers();
+    protected final int numOfReceivers = getNumOfReceivers();
 
     protected final int[] receiverPorts = createReceiverPorts(numOfReceivers);
     protected final int[] receiverIds = createReceiverIDs(numOfReceivers);

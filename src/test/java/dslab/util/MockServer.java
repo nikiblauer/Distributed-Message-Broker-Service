@@ -45,7 +45,7 @@ public class MockServer implements Runnable {
         try (ServerSocket socket = new ServerSocket(port)) {
             this.socket = socket;
 
-            while (true) {
+            while (!socket.isClosed()) {
                 Socket conn = socket.accept();
                 handleConnection(conn);
             }
@@ -54,7 +54,7 @@ public class MockServer implements Runnable {
         }
     }
 
-    private void handleConnection(Socket conn) throws IOException {
+    private void handleConnection(Socket conn) {
         try (conn;
              BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
              PrintStream out = new PrintStream(conn.getOutputStream(), true)) {
