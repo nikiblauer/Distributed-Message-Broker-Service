@@ -29,7 +29,7 @@ public class ConfigFactory {
                 new String[]{Constants.LOCALHOST, Constants.LOCALHOST},
                 electionPeerPorts,
                 electionPeerIds,
-                100,
+                Constants.GLOBAL_BASE_ELECTION_HEARTBEAT_TIMEOUT_MS,
                 Constants.LOCALHOST,
                 Constants.MONITORING_PORT
         );
@@ -104,7 +104,7 @@ public class ConfigFactory {
                     electionPeerHosts,
                     electionPeerPorts,
                     electionPeerIds,
-                    Constants.GLOBAL_BASE_ELECTION_HEARTBEAT_TIMEOUT_MS,
+                    Constants.GLOBAL_BASE_ELECTION_HEARTBEAT_TIMEOUT_MS + 100L * id,
                     Constants.LOCALHOST,
                     Constants.MONITORING_PORT
             );
