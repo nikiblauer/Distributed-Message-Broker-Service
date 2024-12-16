@@ -112,7 +112,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
         sender.sendCommandAndReadResponse(declare(leaderId));
 
         // Check that MB did not forward the declare msg
-        assertEquals(0, receiver.numberOfReceivedMsg());
+        assertEquals(0, receiver.receivedMessageSize());
     }
 
     @GitHubClassroomGrading(maxScore = 2)

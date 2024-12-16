@@ -58,13 +58,9 @@ public class MockServer implements Runnable {
 
 
             out.println("ok LEP");
-            while (true) {
-                boolean ok = handleInput(in, out);
-
-                // Closes the socket on exit or protocol error
-                if (!ok) {
-                    break;
-                }
+            boolean ok = true;
+            while (!conn.isClosed() && ok) {
+                ok = handleInput(in, out);
             }
 
         } catch (IOException e) {
@@ -112,7 +108,7 @@ public class MockServer implements Runnable {
         return receivedMessages.toString();
     }
 
-    public int numberOfReceivedMsg() {
+    public int receivedMessageSize() {
         return receivedMessages.size();
     }
 

@@ -61,7 +61,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
 
         // only receivers-0 should receive a elect statement (receiver-0 has a higher id)
         assertEquals(elect(BROKER_ELECTION_ID), receivers[0].takeMessage());
-        assertThat(receivers[1].numberOfReceivedMsg()).isEqualTo(0);
+        assertThat(receivers[1].receivedMessageSize()).isEqualTo(0);
 
         assertThat(broker.getLeader()).isLessThan(0);
     }
@@ -72,7 +72,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
     void bully_receivesElectOfHigherId_doesNotInitiateElection() throws IOException {
         receivers[0].expectElect(BROKER_ELECTION_ID);
 
-        for (int i = 0; i < numOfReceivers; i++) assertEquals(0, receiver.numberOfReceivedMsg());
+        for (int i = 0; i < numOfReceivers; i++) assertEquals(0, receiver.receivedMessageSize());
     }
 
     @GitHubClassroomGrading(maxScore = 3)
@@ -85,7 +85,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
         sender.sendCommandAndReadResponse(elect(BROKER_ELECTION_ID - 1));
 
         assertEquals(elect(BROKER_ELECTION_ID), receivers[0].takeMessage());
-        assertThat(receivers[1].numberOfReceivedMsg()).isEqualTo(0);
+        assertThat(receivers[1].receivedMessageSize()).isEqualTo(0);
 
         assertThat(broker.getLeader()).isLessThan(0);
     }
@@ -110,6 +110,6 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
         receivers[0].setResponse(ok());
 
         assertEquals(elect(BROKER_ELECTION_ID), receivers[0].takeMessage());
-        assertThat(receivers[1].numberOfReceivedMsg()).isEqualTo(0);
+        assertThat(receivers[1].receivedMessageSize()).isEqualTo(0);
     }
 }
