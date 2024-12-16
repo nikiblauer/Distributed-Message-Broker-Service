@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.ack;
 import static dslab.util.CommandBuilder.declare;
 import static dslab.util.CommandBuilder.elect;
 import static dslab.util.CommandBuilder.ping;
@@ -42,8 +41,7 @@ public class RingElectionMultipleReceiverTest extends BaseElectionReceiverTest {
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void ring_becomesLeader_startsSendingHeartbeatsToPeers() throws IOException, InterruptedException {
         // Setup receiver-0 for incoming declare msg
-        receiver.setExpectedMessage(declare(BROKER_ELECTION_ID));
-        receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
+        receiver.expectDeclare(BROKER_ELECTION_ID);
 
         // become leader by receiving elect <your-own-id>
         sender.connectAndReadResponse();
@@ -52,8 +50,13 @@ public class RingElectionMultipleReceiverTest extends BaseElectionReceiverTest {
         // receiver-0 should receive declare message, as he is the next peer in the ring
         assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
 
+        // Prepare the receivers to respond to the ping
+        for (MockServer receiver : receivers) receiver.expectPing();
+
         // check for health notification
-        for (MockServer receiver : receivers) assertEquals(ping(), receiver.takeMessage());
+        for (MockServer receiver : receivers) {
+            assertEquals(ping(), receiver.takeMessage());
+        }
     }
 
 

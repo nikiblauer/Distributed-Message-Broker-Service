@@ -50,16 +50,11 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(receivers[i].getElectionId()));
-        }
+        for (int i = 0; i < numOfReceivers; i++) receivers[i].expectDeclare(BROKER_ELECTION_ID);
 
         broker.initiateElection();
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (int i = 0; i < numOfReceivers; i++) assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
 
         assertEquals(BROKER_ELECTION_ID, broker.getLeader());
     }
@@ -68,17 +63,12 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_receivesElectOfLowerId_initiatesNewElection_becomesLeader_sendsDeclare() throws IOException, InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(receivers[i].getElectionId()));
-        }
+        for (int i = 0; i < numOfReceivers; i++) receivers[i].expectDeclare(BROKER_ELECTION_ID);
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(elect(BROKER_ELECTION_ID - 1));
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (int i = 0; i < numOfReceivers; i++) assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
 
         assertEquals(BROKER_ELECTION_ID, broker.getLeader());
     }
@@ -87,19 +77,13 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     @Test
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(receivers[i].getElectionId()));
-        }
+        for (int i = 0; i < numOfReceivers; i++) receivers[i].expectDeclare(BROKER_ELECTION_ID);
 
         broker.initiateElection();
 
         for (dslab.util.MockServer server : receivers) assertEquals(declare(BROKER_ELECTION_ID), server.takeMessage());
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(ping());
-            receivers[i].setResponse(pong());
-        }
+        for (int i = 0; i < numOfReceivers; i++) receivers[i].expectPing();
 
         for (dslab.util.MockServer mockServer : receivers) assertEquals(ping(), mockServer.takeMessage());
     }

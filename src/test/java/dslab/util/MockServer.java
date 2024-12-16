@@ -9,6 +9,12 @@ import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import static dslab.util.CommandBuilder.ack;
+import static dslab.util.CommandBuilder.declare;
+import static dslab.util.CommandBuilder.elect;
+import static dslab.util.CommandBuilder.ok;
+import static dslab.util.CommandBuilder.vote;
+
 /**
  * Only supports a single connection
  */
@@ -23,11 +29,6 @@ public class MockServer implements Runnable {
 
     private String expectedMessage = "EXPECTED MESSAGE NOT SET";
     private String response = "RESPONSE NOT SET";
-
-    public MockServer(int port) {
-        this.port = port;
-        this.electionId = 0;
-    }
 
     public MockServer(int port, int electionId) {
         this.port = port;
@@ -71,7 +72,7 @@ public class MockServer implements Runnable {
         }
     }
 
-    private boolean handleInput(BufferedReader in , PrintStream out) throws IOException {
+    private boolean handleInput(BufferedReader in, PrintStream out) throws IOException {
         String read = in.readLine();
 
         if (read == null) return false;
@@ -115,19 +116,31 @@ public class MockServer implements Runnable {
         return receivedMessages.size();
     }
 
+    public void expectElect(int id) {
+        this.expectedMessage = elect(id);
+        this.response = ok();
+    }
+
+    public void expectElect(int electId, int candidateId) {
+        this.expectedMessage = elect(electId);
+        this.response = vote(electionId, candidateId);
+    }
+
+    public void expectDeclare(int id) {
+        this.expectedMessage = declare(id);
+        this.response = ack(electionId);
+    }
+
+    public void expectPing() {
+        this.expectedMessage = "ping";
+        this.response = "pong";
+    }
+
     public void setExpectedMessage(String expectedMessage) {
         this.expectedMessage = expectedMessage;
     }
 
     public void setResponse(String response) {
         this.response = response;
-    }
-
-    public void setElectionId(int electionId) {
-        this.electionId = electionId;
-    }
-
-    public int getElectionId() {
-        return electionId;
     }
 }

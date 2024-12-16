@@ -55,8 +55,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_initiatesElection_initiatesNewElection_doesNotBecomeLeader() throws InterruptedException {
-        receivers[0].setExpectedMessage(elect(BROKER_ELECTION_ID));
-        receivers[0].setResponse(ok());
+        receivers[0].expectElect(BROKER_ELECTION_ID);
 
         broker.initiateElection();
 
@@ -71,8 +70,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_receivesElectOfHigherId_doesNotInitiateElection() throws IOException {
-        sender.connectAndReadResponse();
-        sender.sendCommandAndReadResponse(elect(BROKER_ELECTION_ID + 1));
+        receivers[0].expectElect(BROKER_ELECTION_ID);
 
         for (int i = 0; i < numOfReceivers; i++) assertEquals(0, receiver.numberOfReceivedMsg());
     }
@@ -81,8 +79,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_receivesElectOfLowerId_initiatesNewElection_doesNotBecomeLeader() throws IOException, InterruptedException {
-        receivers[0].setExpectedMessage(elect(BROKER_ELECTION_ID));
-        receivers[0].setResponse(ok());
+        receivers[0].expectElect(BROKER_ELECTION_ID);
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(elect(BROKER_ELECTION_ID - 1));

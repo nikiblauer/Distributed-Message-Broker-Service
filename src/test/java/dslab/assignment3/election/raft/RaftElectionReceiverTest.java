@@ -1,6 +1,7 @@
 package dslab.assignment3.election.raft;
 
 import dslab.assignment3.election.base.BaseElectionReceiverTest;
+import dslab.util.MockServer;
 import dslab.util.grading.LocalGradingExtension;
 import dslab.util.grading.annotations.GitHubClassroomGrading;
 import org.junit.jupiter.api.Test;
@@ -9,11 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.ack;
 import static dslab.util.CommandBuilder.declare;
 import static dslab.util.CommandBuilder.elect;
 import static dslab.util.CommandBuilder.ping;
-import static dslab.util.CommandBuilder.vote;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -42,20 +41,13 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
-        }
+        for (MockServer receiver : receivers) receiver.expectElect(BROKER_ELECTION_ID, BROKER_ELECTION_ID);
 
         broker.initiateElection();
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (MockServer receiver : receivers) assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (MockServer receiver : receivers) assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
 
         assertEquals(BROKER_ELECTION_ID, broker.getLeader());
     }
@@ -64,16 +56,11 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_initiatesElection_sendsElectMessageToPeers_doesNotBecomeLeader() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID + 1));
-        }
+        for (MockServer receiver : receivers) receiver.expectElect(BROKER_ELECTION_ID, BROKER_ELECTION_ID + 1);
 
         broker.initiateElection();
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (MockServer receiver : receivers) assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
 
         assertThat(broker.getLeader()).isLessThan(0);
     }
@@ -82,10 +69,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_reachesTimeout_initiatesNewElection() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
-        }
+        for (MockServer receiver : receivers) receiver.expectElect(BROKER_ELECTION_ID, BROKER_ELECTION_ID);
 
         for (int i = 0; i < numOfReceivers; i++) {
             assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
@@ -96,22 +80,16 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     @Test
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(elect(BROKER_ELECTION_ID));
-            receivers[i].setResponse(vote(receivers[i].getElectionId(), BROKER_ELECTION_ID));
-        }
+        for (MockServer receiver : receivers) receiver.expectElect(BROKER_ELECTION_ID, BROKER_ELECTION_ID);
 
         broker.initiateElection();
 
-        for (int i = 0; i < numOfReceivers; i++) assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
+        for (MockServer receiver : receivers) assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
-        }
+        for (MockServer receiver : receivers) receiver.expectDeclare(BROKER_ELECTION_ID);
 
-        for (int i = 0; i < numOfReceivers; i++) assertEquals(declare(BROKER_ELECTION_ID), receivers[i].takeMessage());
+        for (MockServer receiver : receivers) assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
 
-        for (int i = 0; i < numOfReceivers; i++) assertEquals(ping(), receivers[i].takeMessage());
+        for (MockServer receiver : receivers) assertEquals(ping(), receiver.takeMessage());
     }
 }
