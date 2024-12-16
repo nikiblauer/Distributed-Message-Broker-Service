@@ -106,8 +106,7 @@ public class BullyElectionReceiverBrokerWithLowerIdTest extends BaseElectionRece
     @Test
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void bully_reachesTimeout_initiatesNewElection() throws InterruptedException {
-        receivers[0].setExpectedMessage(elect(BROKER_ELECTION_ID));
-        receivers[0].setResponse(ok());
+        receivers[0].setExpectationAndResponse(elect(BROKER_ELECTION_ID), ok());
 
         assertEquals(elect(BROKER_ELECTION_ID), receivers[0].takeMessage());
         assertThat(receivers[1].receivedMessageSize()).isEqualTo(0);
