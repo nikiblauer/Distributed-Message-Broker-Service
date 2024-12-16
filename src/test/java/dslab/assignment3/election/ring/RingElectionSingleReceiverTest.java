@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static dslab.util.CommandBuilder.*;
+import static dslab.util.CommandBuilder.declare;
+import static dslab.util.CommandBuilder.elect;
+import static dslab.util.CommandBuilder.ok;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -151,5 +153,4 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
         // Check that MB did not forward the declare msg
         assertEquals(elect(leaderId), receiver.takeMessage());
     }
-
 }

@@ -55,9 +55,11 @@ public class MockServer implements Runnable {
     }
 
     private void handleConnection(Socket conn) {
-        try (conn;
-             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-             PrintStream out = new PrintStream(conn.getOutputStream(), true)) {
+        try (
+                conn;
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                PrintStream out = new PrintStream(conn.getOutputStream(), true)
+        ) {
 
             out.println("ok LEP");
             boolean ok = true;
@@ -114,7 +116,7 @@ public class MockServer implements Runnable {
         return receivedMessages.toString();
     }
 
-    public int receivedMessageSize() {
+    public int receivedMessagesSize() {
         return receivedMessages.size();
     }
 

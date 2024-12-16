@@ -80,11 +80,11 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
 
         broker.initiateElection();
 
-        for (dslab.util.MockServer server : receivers) assertEquals(declare(BROKER_ELECTION_ID), server.takeMessage());
+        for (MockServer server : receivers) assertEquals(declare(BROKER_ELECTION_ID), server.takeMessage());
 
         for (MockServer receiver : receivers) receiver.expectPing();
 
-        for (dslab.util.MockServer mockServer : receivers) assertEquals(ping(), mockServer.takeMessage());
+        for (MockServer mockServer : receivers) assertEquals(ping(), mockServer.takeMessage());
     }
 
 }

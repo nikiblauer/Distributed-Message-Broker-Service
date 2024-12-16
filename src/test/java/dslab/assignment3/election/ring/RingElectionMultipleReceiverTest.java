@@ -11,11 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static dslab.util.CommandBuilder.ack;
 import static dslab.util.CommandBuilder.declare;
 import static dslab.util.CommandBuilder.elect;
 import static dslab.util.CommandBuilder.ping;
-import static dslab.util.CommandBuilder.pong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -58,6 +56,4 @@ public class RingElectionMultipleReceiverTest extends BaseElectionReceiverTest {
         // check for health notification
         for (MockServer receiver : receivers) assertEquals(ping(), receiver.takeMessage());
     }
-
-
 }
