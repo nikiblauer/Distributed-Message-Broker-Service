@@ -52,7 +52,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     void bully_initiatesElection_sendsElectMessageToPeers_becomesLeader() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
+            receivers[i].setResponse(ack(receivers[i].getElectionId()));
         }
 
         broker.initiateElection();
@@ -70,7 +70,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     void bully_receivesElectOfLowerId_initiatesNewElection_becomesLeader_sendsDeclare() throws IOException, InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
+            receivers[i].setResponse(ack(receivers[i].getElectionId()));
         }
 
         sender.connectAndReadResponse();
@@ -89,7 +89,7 @@ public class BullyElectionReceiverBrokerWithHighestIdTest extends BaseElectionRe
     void bully_becomesLeader_startsSendingHeartbeatsToPeers() throws InterruptedException {
         for (int i = 0; i < numOfReceivers; i++) {
             receivers[i].setExpectedMessage(declare(BROKER_ELECTION_ID));
-            receivers[i].setResponse(ack(BROKER_ELECTION_ID - (i + 1)));
+            receivers[i].setResponse(ack(receivers[i].getElectionId()));
         }
 
         broker.initiateElection();

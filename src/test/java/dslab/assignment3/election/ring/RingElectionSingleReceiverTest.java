@@ -95,7 +95,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     void ring_receivesDeclareOfHigherId_forwardsDeclare() throws IOException, InterruptedException {
         final int leaderId = BROKER_ELECTION_ID + 1;
         receiver.setExpectedMessage(declare(leaderId));
-        receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
+        receiver.setResponse(ack(receiver.getElectionId()));
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(declare(leaderId));
@@ -110,7 +110,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     void ring_receivesDeclareOfOwnId_doesNotForwardDeclare() throws IOException {
         final int leaderId = BROKER_ELECTION_ID;
         receiver.setExpectedMessage(declare(leaderId));
-        receiver.setResponse(ack(BROKER_ELECTION_ID - 1));
+        receiver.setResponse(ack(receiver.getElectionId()));
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(declare(leaderId));
