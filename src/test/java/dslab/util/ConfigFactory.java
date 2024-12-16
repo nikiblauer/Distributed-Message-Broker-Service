@@ -104,7 +104,7 @@ public class ConfigFactory {
                     electionPeerHosts,
                     electionPeerPorts,
                     electionPeerIds,
-                    Constants.GLOBAL_BASE_ELECTION_HEARTBEAT_TIMEOUT_MS + 100L * id,
+                    Constants.GLOBAL_BASE_ELECTION_HEARTBEAT_TIMEOUT_MS,
                     Constants.LOCALHOST,
                     Constants.MONITORING_PORT
             );
