@@ -45,7 +45,10 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
 
         broker.initiateElection();
 
-        for (MockServer receiver : receivers) assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
+        for (MockServer receiver : receivers) {
+            assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
+            receiver.expectDeclare(BROKER_ELECTION_ID);
+        }
 
         for (MockServer receiver : receivers) assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
 
@@ -82,11 +85,15 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
 
         broker.initiateElection();
 
-        for (MockServer receiver : receivers) assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
+        for (MockServer receiver : receivers) {
+            assertEquals(elect(BROKER_ELECTION_ID), receiver.takeMessage());
+            receiver.expectDeclare(BROKER_ELECTION_ID);
+        }
 
-        for (MockServer receiver : receivers) receiver.expectDeclare(BROKER_ELECTION_ID);
-
-        for (MockServer receiver : receivers) assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
+        for (MockServer receiver : receivers) {
+            assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
+            receiver.expectPing();
+        }
 
         for (MockServer receiver : receivers) assertEquals(ping(), receiver.takeMessage());
     }

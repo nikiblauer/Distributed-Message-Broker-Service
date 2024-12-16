@@ -11,9 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import static dslab.util.CommandBuilder.ack;
 import static dslab.util.CommandBuilder.declare;
 import static dslab.util.CommandBuilder.elect;
 import static dslab.util.CommandBuilder.ping;
+import static dslab.util.CommandBuilder.pong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -50,13 +52,11 @@ public class RingElectionMultipleReceiverTest extends BaseElectionReceiverTest {
         // receiver-0 should receive declare message, as he is the next peer in the ring
         assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
 
-        // Prepare the receivers to respond to the ping
+        // Prepare the receivers to expect to the ping from the new leader
         for (MockServer receiver : receivers) receiver.expectPing();
 
         // check for health notification
-        for (MockServer receiver : receivers) {
-            assertEquals(ping(), receiver.takeMessage());
-        }
+        for (MockServer receiver : receivers) assertEquals(ping(), receiver.takeMessage());
     }
 
 

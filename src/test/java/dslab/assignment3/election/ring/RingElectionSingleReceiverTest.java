@@ -39,7 +39,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
         return 1;
     }
 
-    public static Stream<Arguments> source_ring_receivesElectOfHigherId_forwardsElect() {
+    public static Stream<Arguments> source_ring_receivesElectOfDifferentId_forwardsElect() {
         return Stream.of(
                 // MB receives lower id --> propagate your own id
                 Arguments.of(elect(BROKER_ELECTION_ID - 1), elect(BROKER_ELECTION_ID)),
@@ -50,9 +50,9 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
 
     @GitHubClassroomGrading(maxScore = 1)
     @ParameterizedTest
-    @MethodSource("source_ring_receivesElectOfHigherId_forwardsElect")
+    @MethodSource("source_ring_receivesElectOfDifferentId_forwardsElect")
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-    void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker) throws IOException, InterruptedException {
+    void ring_receivesElectOfDifferentId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker) throws IOException, InterruptedException {
         receiver.setExpectationAndResponse(expectedMsgSentByBroker, ok());
 
         sender.connectAndReadResponse();
