@@ -42,25 +42,35 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     public static Stream<Arguments> source_ring_receivesElectOfHigherId_forwardsElect() {
         return Stream.of(
                 // MB receives lower id --> propagate your own id
-                Arguments.of(elect(BROKER_ELECTION_ID - 1), elect(BROKER_ELECTION_ID), ok()),
+                Arguments.of(elect(BROKER_ELECTION_ID - 1), elect(BROKER_ELECTION_ID)),
                 // MB receives higher id --> propagate received id
-                Arguments.of(elect(BROKER_ELECTION_ID + 1), elect(BROKER_ELECTION_ID + 1), ok()),
-                // MB receives its own id
-                Arguments.of(elect(BROKER_ELECTION_ID), declare(BROKER_ELECTION_ID), ack(1))
+                Arguments.of(elect(BROKER_ELECTION_ID + 1), elect(BROKER_ELECTION_ID + 1))
         );
     }
 
-    @GitHubClassroomGrading(maxScore = 2)
+    @GitHubClassroomGrading(maxScore = 1)
     @ParameterizedTest
     @MethodSource("source_ring_receivesElectOfHigherId_forwardsElect")
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-    void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker, String receiverResponse) throws IOException, InterruptedException {
-        receiver.setExpectationAndResponse(expectedMsgSentByBroker, receiverResponse);
+    void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker) throws IOException, InterruptedException {
+        receiver.setExpectationAndResponse(expectedMsgSentByBroker, ok());
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(msgSendToBroker);
 
         assertEquals(expectedMsgSentByBroker, receiver.takeMessage());
+    }
+
+    @GitHubClassroomGrading(maxScore = 1)
+    @Test
+    @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void ring_receivesElectOfOwnId_forwardsDeclare() throws IOException, InterruptedException {
+        receiver.expectDeclare(BROKER_ELECTION_ID);
+
+        sender.connectAndReadResponse();
+        sender.sendCommandAndReadResponse(elect(BROKER_ELECTION_ID));
+
+        assertEquals(declare(BROKER_ELECTION_ID), receiver.takeMessage());
     }
 
     @GitHubClassroomGrading(maxScore = 2)
