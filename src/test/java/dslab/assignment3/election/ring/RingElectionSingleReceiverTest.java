@@ -41,9 +41,12 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
 
     public static Stream<Arguments> source_ring_receivesElectOfHigherId_forwardsElect() {
         return Stream.of(
-                Arguments.of(elect(BROKER_ELECTION_ID - 1), elect(BROKER_ELECTION_ID)), // MB receives lower id --> propagate your own id
-                Arguments.of(elect(BROKER_ELECTION_ID + 1), elect(BROKER_ELECTION_ID + 1)), // MB receives higher id --> propagate received id
-                Arguments.of(elect(BROKER_ELECTION_ID), declare(BROKER_ELECTION_ID)) // MB receives its own id
+                // MB receives lower id --> propagate your own id
+                Arguments.of(elect(BROKER_ELECTION_ID - 1), elect(BROKER_ELECTION_ID), ok()),
+                // MB receives higher id --> propagate received id
+                Arguments.of(elect(BROKER_ELECTION_ID + 1), elect(BROKER_ELECTION_ID + 1), ok()),
+                // MB receives its own id
+                Arguments.of(elect(BROKER_ELECTION_ID), declare(BROKER_ELECTION_ID), ack(1))
         );
     }
 
@@ -51,9 +54,8 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
     @ParameterizedTest
     @MethodSource("source_ring_receivesElectOfHigherId_forwardsElect")
     @Timeout(value = 3000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-    void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker) throws IOException, InterruptedException {
-        receiver.setExpectedMessage(expectedMsgSentByBroker);
-        receiver.setResponse(ok());
+    void ring_receivesElectOfHigherId_forwardsElect(String msgSendToBroker, String expectedMsgSentByBroker, String receiverResponse) throws IOException, InterruptedException {
+        receiver.setExpectationAndResponse(expectedMsgSentByBroker, receiverResponse);
 
         sender.connectAndReadResponse();
         sender.sendCommandAndReadResponse(msgSendToBroker);
@@ -112,7 +114,7 @@ public class RingElectionSingleReceiverTest extends BaseElectionReceiverTest {
         sender.sendCommandAndReadResponse(declare(leaderId));
 
         // Check that MB did not forward the declare msg
-        assertEquals(0, receiver.receivedMessageSize());
+        assertEquals(0, receiver.receivedNonPingMessagesSize());
     }
 
     @GitHubClassroomGrading(maxScore = 2)

@@ -71,9 +71,7 @@ public class RaftElectionReceiverTest extends BaseElectionReceiverTest {
     void raft_reachesTimeout_initiatesNewElection() throws InterruptedException {
         for (MockServer receiver : receivers) receiver.expectElect(BROKER_ELECTION_ID, BROKER_ELECTION_ID);
 
-        for (int i = 0; i < numOfReceivers; i++) {
-            assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
-        }
+        for (int i = 0; i < numOfReceivers; i++) assertEquals(elect(BROKER_ELECTION_ID), receivers[i].takeMessage());
     }
 
     @GitHubClassroomGrading(maxScore = 2)

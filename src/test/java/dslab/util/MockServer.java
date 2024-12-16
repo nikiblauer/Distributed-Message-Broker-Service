@@ -13,6 +13,8 @@ import static dslab.util.CommandBuilder.ack;
 import static dslab.util.CommandBuilder.declare;
 import static dslab.util.CommandBuilder.elect;
 import static dslab.util.CommandBuilder.ok;
+import static dslab.util.CommandBuilder.ping;
+import static dslab.util.CommandBuilder.pong;
 import static dslab.util.CommandBuilder.vote;
 
 /**
@@ -21,14 +23,17 @@ import static dslab.util.CommandBuilder.vote;
 public class MockServer implements Runnable {
 
     private static final String ERROR_RESPONSE = "INVALID MESSAGE RECEIVED";
+    private static final String DEFAULT_EXPECTED_MESSAGE = "EXPECTED MESSAGE NOT SET, PLEASE SET A EXPECTED MESSAGE";
+    private static final String DEFAULT_RESPONSE = "EXPECTED MESSAGE NOT SET, PLEASE SET A EXPECTED MESSAGE";
 
     private ServerSocket socket;
-    private int electionId;
+    private final int electionId;
     private final int port;
     private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+    private final BlockingQueue<String> receivedNonPingMessages = new LinkedBlockingQueue<>();
 
-    private String expectedMessage = "EXPECTED MESSAGE NOT SET";
-    private String response = "RESPONSE NOT SET";
+    private String expectedMessage = DEFAULT_EXPECTED_MESSAGE;
+    private String response = DEFAULT_RESPONSE;
 
     public MockServer(int port, int electionId) {
         this.port = port;
@@ -46,8 +51,6 @@ public class MockServer implements Runnable {
             }
         } catch (IOException e) {
             // ignored
-        } finally {
-            shutdown();
         }
     }
 
@@ -55,7 +58,6 @@ public class MockServer implements Runnable {
         try (conn;
              BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
              PrintStream out = new PrintStream(conn.getOutputStream(), true)) {
-
 
             out.println("ok LEP");
             boolean ok = true;
@@ -71,15 +73,19 @@ public class MockServer implements Runnable {
     private boolean handleInput(BufferedReader in, PrintStream out) throws IOException {
         String read = in.readLine();
 
-        if (read == null) return false;
+        if (read == null || read.isBlank()) return false;
 
         receivedMessages.add(read);
 
-        // No answer if response is set to blank
-        if (response.isBlank()) return true;
+        if (!read.equals(ping()) || !read.equals(pong())) receivedNonPingMessages.add(read);
 
-        if (expectedMessage.equals("EXPECTED MESSAGE NOT SET")) {
-            out.println("EXPECTED MESSAGE NOT SET, PLEASE SET A EXPECTED MESSAGE");
+        if (ping().equals(read)) {
+            out.println(pong());
+            return true;
+        }
+
+        if (expectedMessage.equals(DEFAULT_EXPECTED_MESSAGE)) {
+            out.println(DEFAULT_RESPONSE);
             return false;
         }
 
@@ -112,6 +118,10 @@ public class MockServer implements Runnable {
         return receivedMessages.size();
     }
 
+    public int receivedNonPingMessagesSize() {
+        return receivedNonPingMessages.size();
+    }
+
     public void expectElect(int id) {
         this.expectedMessage = elect(id);
         this.response = ok();
@@ -132,11 +142,8 @@ public class MockServer implements Runnable {
         this.response = "pong";
     }
 
-    public void setExpectedMessage(String expectedMessage) {
+    public void setExpectationAndResponse(String expectedMessage, String response) {
         this.expectedMessage = expectedMessage;
-    }
-
-    public void setResponse(String response) {
         this.response = response;
     }
 }

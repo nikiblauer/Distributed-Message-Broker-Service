@@ -1,8 +1,8 @@
 package dslab.assignment3.election.raft;
 
 import dslab.assignment3.election.base.BaseElectionProtocolTest;
-import dslab.util.grading.annotations.GitHubClassroomGrading;
 import dslab.util.grading.LocalGradingExtension;
+import dslab.util.grading.annotations.GitHubClassroomGrading;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,9 +29,11 @@ public class RaftElectionProtocolTest extends BaseElectionProtocolTest {
     @Test
     @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void raft_protocol_declare_successfully() throws IOException {
+        final int leaderId = config.electionPeerIds()[1];
+
         sender.connectAndReadResponse();
-        assertThat(sender.sendCommandAndReadResponse(declare(10))).contains("ack");
-        assertEquals(10, broker.getLeader());
+        assertThat(sender.sendCommandAndReadResponse(declare(leaderId))).contains("ack");
+        assertEquals(leaderId, broker.getLeader());
     }
 
     @GitHubClassroomGrading(maxScore = 2)
