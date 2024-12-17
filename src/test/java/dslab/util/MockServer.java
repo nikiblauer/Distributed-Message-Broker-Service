@@ -79,7 +79,7 @@ public class MockServer implements Runnable {
 
         receivedMessages.add(read);
 
-        if (!read.equals(ping()) || !read.equals(pong())) receivedNonPingMessages.add(read);
+        if (!read.equals(ping()) && !read.equals(pong())) receivedNonPingMessages.add(read);
 
         if (ping().equals(read)) {
             out.println(pong());
