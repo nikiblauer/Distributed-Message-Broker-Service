@@ -18,7 +18,10 @@ public class BrokerClientHandler implements Runnable {
 
     Thread subscribedThread;
 
-    public BrokerClientHandler(Map<Thread, BrokerClientHandler> threadMap, Socket clientSocket, Map<String, Exchange> exchanges, Map<String, Queue> queues) {
+    private MonitoringClient monitoringClient;
+
+    public BrokerClientHandler(MonitoringClient monitoringClient, Map<Thread, BrokerClientHandler> threadMap, Socket clientSocket, Map<String, Exchange> exchanges, Map<String, Queue> queues) {
+        this.monitoringClient = monitoringClient;
         threadMap.put(Thread.currentThread(), this);
 
 
@@ -177,6 +180,9 @@ public class BrokerClientHandler implements Runnable {
         for (Queue queue : targetQueues){
             queue.addMessage(message);
         }
+
+        monitoringClient.sendLog(routingKey);
+
 
     }
 

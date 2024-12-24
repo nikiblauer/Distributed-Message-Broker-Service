@@ -19,9 +19,8 @@ public class Broker implements IBroker {
     private final ExecutorService executor;
     private volatile boolean running;
     private final DNSClient dnsClient;
+    private final MonitoringClient monitoringClient;
     private final Map<Thread, BrokerClientHandler> threadMap;
-
-
     private final Map<String, Exchange> exchanges;
     private final Map<String, Queue> queues;
 
@@ -30,6 +29,7 @@ public class Broker implements IBroker {
         this.config = config;
         this.dnsClient = new DNSClient(config.dnsHost(), config.dnsPort());
         registerDomain();
+        this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
 
         try {
             this.serverSocket = new ServerSocket(config.port());
@@ -54,7 +54,7 @@ public class Broker implements IBroker {
         while(running){
             try {
                 Socket clientSocket = serverSocket.accept();
-                BrokerClientHandler handler = new BrokerClientHandler(threadMap, clientSocket, exchanges, queues);
+                BrokerClientHandler handler = new BrokerClientHandler(monitoringClient, threadMap, clientSocket, exchanges, queues);
                 executor.submit(handler);
             } catch (IOException e) {
                 if (running){
@@ -90,6 +90,7 @@ public class Broker implements IBroker {
     @Override
     public void shutdown() {
         running = false;
+        monitoringClient.shutdown();
 
         try {
             if (serverSocket != null) {
