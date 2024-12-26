@@ -136,10 +136,12 @@ public class Broker implements IBroker {
     @Override
     public void shutdown() {
         running = false;
-        monitoringClient.shutdown();
-
         this.sender.shutdown();
         this.receiver.shutdown();
+
+        monitoringClient.shutdown();
+
+
 
         try {
             if (serverSocket != null) {

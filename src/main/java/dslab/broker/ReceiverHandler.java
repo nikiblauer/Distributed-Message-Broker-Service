@@ -132,8 +132,6 @@ public class ReceiverHandler implements Runnable {
     }
 
     private void shutdown() {
-        this.running = false;
-
         try {
             clientSocket.close();
         } catch (IOException e) {

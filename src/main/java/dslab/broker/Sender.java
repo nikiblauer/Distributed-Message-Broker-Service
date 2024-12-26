@@ -12,7 +12,7 @@ import java.util.Scanner;
 
 public class Sender implements Runnable {
 
-    private boolean running;
+    private volatile boolean running;
     private final Broker broker;
     private final LinkedList<Socket> sockets = new LinkedList<>();
 
@@ -178,8 +178,6 @@ public class Sender implements Runnable {
         }
 
     }
-
-
 
     public void shutdown() {
         running = false;
