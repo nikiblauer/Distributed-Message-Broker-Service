@@ -1,6 +1,7 @@
 package dslab.broker;
 
 import dslab.ComponentFactory;
+import dslab.broker.enums.ElectionState;
 import dslab.config.BrokerConfig;
 
 import java.io.IOException;
@@ -18,17 +19,31 @@ public class Broker implements IBroker {
     private final ServerSocket serverSocket;
     private final ExecutorService executor;
     private volatile boolean running;
-    private final DNSClient dnsClient;
     private final MonitoringClient monitoringClient;
     private final Map<Thread, BrokerClientHandler> threadMap;
     private final Map<String, Exchange> exchanges;
     private final Map<String, Queue> queues;
 
+    // Leader Election
+    private Receiver receiver;
+    private Sender sender;
+    private volatile ElectionState electionState;
+    private volatile int leader;
 
     public Broker(BrokerConfig config) {
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
+
         this.config = config;
-        this.dnsClient = new DNSClient(config.dnsHost(), config.dnsPort());
-        registerDomain();
+        this.electionState = ElectionState.FOLLOWER;
+        this.leader = -1;
+        this.receiver = new Receiver(this);
+        this.executor.submit(receiver);
+        this.sender = new Sender(this);
+        this.executor.submit(sender);
+
+
+        registerDomain(config.domain());
+
         this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
 
         try {
@@ -41,10 +56,29 @@ public class Broker implements IBroker {
         exchanges = new ConcurrentHashMap<>();
         queues = new ConcurrentHashMap<>();
         threadMap = new ConcurrentHashMap<>();
-        this.executor = Executors.newVirtualThreadPerTaskExecutor();
 
         Exchange defaultExchange = new Exchange(ExchangeType.DEFAULT, "default");
         this.exchanges.put("default", defaultExchange);
+    }
+
+    public ElectionState getElectionState() {
+        return electionState;
+    }
+
+    public void setElectionState(ElectionState electionState) {
+        this.electionState = electionState;
+    }
+
+    public BrokerConfig getConfig() {
+        return config;
+    }
+
+    public Receiver getReceiver() {
+        return receiver;
+    }
+
+    public Sender getSender() {
+        return sender;
     }
 
     @Override
@@ -65,32 +99,47 @@ public class Broker implements IBroker {
         }
     }
 
-    private void registerDomain(){
-        if (dnsClient.connect()){
-            dnsClient.register(config.domain(), config.host() + ':' + config.port());
-            dnsClient.exit();
+    private void registerDomain(String domain){
+        DNSClient client = new DNSClient(config.dnsHost(), config.dnsPort());
+        if (client.connect()){
+            client.register(domain, config.host() + ':' + config.port());
+            client.exit();
         }
     }
 
     @Override
     public int getId() {
-        return 0;
+        return config.electionId();
     }
 
     @Override
     public void initiateElection() {
-
+        sender.elect(this.getId());
     }
 
     @Override
     public int getLeader() {
-        return 0;
+        return leader;
     }
+
+    public void setLeader(int leaderID) {
+        this.leader = leaderID;
+
+        if (leaderID == this.getId()){
+            this.electionState = ElectionState.LEADER;
+            registerDomain(config.electionDomain());
+        }
+    }
+
+
 
     @Override
     public void shutdown() {
         running = false;
         monitoringClient.shutdown();
+
+        this.sender.shutdown();
+        this.receiver.shutdown();
 
         try {
             if (serverSocket != null) {
