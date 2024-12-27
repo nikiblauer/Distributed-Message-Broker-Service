@@ -1,6 +1,7 @@
 package dslab.broker;
 
 import dslab.ComponentFactory;
+import dslab.broker.enums.ElectionType;
 import dslab.broker.enums.ElectionState;
 import dslab.config.BrokerConfig;
 
@@ -28,22 +29,26 @@ public class Broker implements IBroker {
     private Receiver receiver;
     private Sender sender;
     private volatile ElectionState electionState;
+    private final ElectionType electionType;
     private volatile int leader;
+
 
     public Broker(BrokerConfig config) {
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
 
         this.config = config;
-        this.electionState = ElectionState.FOLLOWER;
-        this.leader = -1;
-        this.receiver = new Receiver(this);
-        this.executor.submit(receiver);
-        this.sender = new Sender(this);
-        this.executor.submit(sender);
+        this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
+        if (electionType != ElectionType.NONE) {
+            this.electionState = ElectionState.FOLLOWER;
+            this.leader = -1;
 
+            this.sender = new Sender(this);
+            this.executor.submit(sender);
+            this.receiver = new Receiver(this);
+            this.executor.submit(receiver);
+        }
 
         registerDomain(config.domain());
-
         this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
 
         try {
@@ -67,6 +72,15 @@ public class Broker implements IBroker {
 
     public void setElectionState(ElectionState electionState) {
         this.electionState = electionState;
+        if (electionState == ElectionState.FOLLOWER) {
+            receiver.startHeartbeatMonitor();
+        } else {
+            receiver.stopHeartbeatMonitor();
+        }
+    }
+
+    public ElectionType getElectionType() {
+        return electionType;
     }
 
     public BrokerConfig getConfig() {
@@ -114,6 +128,7 @@ public class Broker implements IBroker {
 
     @Override
     public void initiateElection() {
+        System.out.println("Election timed out");
         sender.elect(this.getId());
     }
 
@@ -136,8 +151,10 @@ public class Broker implements IBroker {
     @Override
     public void shutdown() {
         running = false;
-        this.sender.shutdown();
-        this.receiver.shutdown();
+        if (electionType != ElectionType.NONE) {
+            this.sender.shutdown();
+            this.receiver.shutdown();
+        }
 
         monitoringClient.shutdown();
 

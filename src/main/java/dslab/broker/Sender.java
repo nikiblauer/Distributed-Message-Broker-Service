@@ -16,8 +16,6 @@ public class Sender implements Runnable {
     private final Broker broker;
     private final LinkedList<Socket> sockets = new LinkedList<>();
 
-
-
     public Sender(Broker broker) {
         this.running = true;
         this.broker = broker;
@@ -37,8 +35,30 @@ public class Sender implements Runnable {
             } catch (IOException e) {
                 //throw new RuntimeException(e);
             }
+
         }
     }
+
+    private Socket connectToPeer(String host, int port){
+        Socket socket;
+        try {
+            socket = new Socket(host, port);
+            Scanner in = new Scanner(socket.getInputStream());
+            if (in.hasNextLine()){
+                String connectResponse = in.nextLine();
+                if (connectResponse.equalsIgnoreCase("ok LEP")){
+                    return socket;
+                }
+            }
+
+        } catch (IOException e) {
+            //throw new RuntimeException(e);
+        }
+
+        return null;
+    }
+
+
 
     public void ping() {
         connectToPeers();
@@ -48,57 +68,40 @@ public class Sender implements Runnable {
                 out = new PrintWriter(socket.getOutputStream(), true);
                 out.println("ping");
             } catch (IOException e) {
+                System.out.println(e.getMessage());
                 //throw new RuntimeException(e);
             }
         }
         disconnectFromPeers();
     }
+
+
+
 
 
     public void elect(int id) {
         for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
             Socket socket;
             try {
-                socket = new Socket(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
-                sockets.add(socket);
-                Scanner in = new Scanner(socket.getInputStream());
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                String connectResponse = in.nextLine();
-                if (connectResponse.equalsIgnoreCase("ok LEP")){
+                socket = connectToPeer(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
+                if (socket != null) {
+                    sockets.add(socket);
+                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                     out.println("elect " + id);
+                    Scanner in = new Scanner(socket.getInputStream());
                     if (in.nextLine().equals("ok")){
                         break;
                     }
-
                 }
+
             } catch (IOException e) {
+                System.out.println(e.getMessage());
+
                 //throw new RuntimeException(e);
             }
         }
         disconnectFromPeers();
     }
-
-    /*
-    public void elect(int id) {
-        connectToPeers();
-        for (Socket socket : sockets) {
-            PrintWriter out = null;
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-                out.println("elect " + id);
-                Scanner in = new Scanner(socket.getInputStream());
-                if (in.nextLine().equals("ok")){
-                    break;
-                }
-            } catch (IOException e) {
-                //throw new RuntimeException(e);
-            }
-        }
-        disconnectFromPeers();
-    }
-
-     */
-
 
 
     public void declare(int id) {
@@ -106,12 +109,11 @@ public class Sender implements Runnable {
         for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
             Socket socket;
             try {
-                socket = new Socket(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
-                sockets.add(socket);
-                Scanner in = new Scanner(socket.getInputStream());
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                String connectResponse = in.nextLine();
-                if (connectResponse.equalsIgnoreCase("ok LEP")) {
+                socket = connectToPeer(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
+                if (socket != null) {
+                    sockets.add(socket);
+                    Scanner in = new Scanner(socket.getInputStream());
+                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                     out.println("declare " + id);
                     String response = in.nextLine();
                     if (response.equals("ok") || response.startsWith("ack")) {
@@ -119,36 +121,13 @@ public class Sender implements Runnable {
                     }
                 }
             } catch (IOException e) {
-            //throw new RuntimeException(e);
-            }
-        }
-
-        disconnectFromPeers();
-    }
-
-
-
-    /*public void declare(int id) {
-        this.broker.setLeader(id);
-
-        connectToPeers();
-        for (Socket socket : sockets) {
-            PrintWriter out = null;
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-                out.println("declare " + id);
-                Scanner in = new Scanner(socket.getInputStream());
-                if (in.nextLine().equals("ok")){
-                    break;
-                }
-            } catch (IOException e) {
+                System.out.println(e.getMessage());
                 //throw new RuntimeException(e);
             }
         }
         disconnectFromPeers();
     }
 
-     */
 
 
 

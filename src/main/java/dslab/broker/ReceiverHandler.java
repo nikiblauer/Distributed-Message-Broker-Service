@@ -122,14 +122,13 @@ public class ReceiverHandler implements Runnable {
                 receiver.getBroker().getSender().declare(senderId);
             }
         }
-        this.receiver.setLeaderElected(true);
-
     }
 
     private void handlePing(String[] args){
         out.println("pong");
-        receiver.updateHeartbeat();
+        receiver.resetHeartbeat();
     }
+
 
     private void shutdown() {
         try {

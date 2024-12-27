@@ -1,6 +1,7 @@
 package dslab.broker;
 
 import dslab.IServer;
+import dslab.broker.enums.ElectionState;
 import dslab.config.BrokerConfig;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ public class Receiver implements IServer {
     private volatile boolean running;
     private volatile long lastHeartbeat;
     private Broker broker;
-    private boolean leaderElected;
+    private Thread heartbeatMonitorThread;
 
     public Receiver(Broker broker){
         this.broker = broker;
@@ -31,37 +32,55 @@ public class Receiver implements IServer {
 
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
         this.running = true;
-        this.leaderElected = true;
 
-        updateHeartbeat();
-        executor.submit(() -> monitorHeartbeat(config.electionHeartbeatTimeoutMs()));
+        this.lastHeartbeat = System.currentTimeMillis();
+        startHeartbeatMonitor();
 
     }
 
-    public synchronized void updateHeartbeat() {
+
+    /**
+     * Starts the heartbeat monitor if the election state is FOLLOWER.
+     */
+    public void startHeartbeatMonitor() {
+        if (heartbeatMonitorThread == null || !heartbeatMonitorThread.isAlive()) {
+            heartbeatMonitorThread = new Thread(() -> {
+                while (running) {
+                    // Only run if the current state is FOLLOWER
+                    if (broker.getElectionState() == ElectionState.FOLLOWER) {
+                        if (System.currentTimeMillis() - lastHeartbeat > config.electionHeartbeatTimeoutMs()) {
+                            broker.initiateElection();
+                            // Reset lastHeartbeat to avoid continuous triggering
+                            lastHeartbeat = System.currentTimeMillis();
+                        }
+                        try {
+                            Thread.sleep(config.electionHeartbeatTimeoutMs() / 2); // Check periodically
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    } else {
+                        // Exit the monitor loop if no longer a FOLLOWER
+                        break;
+                    }
+                }
+            });
+            heartbeatMonitorThread.start();
+        }
+    }
+
+    /**
+     * Stops the heartbeat monitor.
+     */
+    public void stopHeartbeatMonitor() {
+        if (heartbeatMonitorThread != null) {
+            heartbeatMonitorThread.interrupt();
+        }
+    }
+
+    public void resetHeartbeat() {
         lastHeartbeat = System.currentTimeMillis();
     }
 
-    public void setLeaderElected(boolean leaderElected) {
-        this.leaderElected = leaderElected;
-    }
-
-
-    public void monitorHeartbeat(long timeoutMs) {
-        while (running) {
-            if (leaderElected && (getBroker().getId() != getBroker().getLeader()) && (System.currentTimeMillis() - lastHeartbeat > timeoutMs)) {
-                leaderElected = false;
-                broker.initiateElection();
-            }
-
-            try {
-                Thread.sleep(timeoutMs / 2);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-        }
-    }
 
     @Override
     public void run() {
