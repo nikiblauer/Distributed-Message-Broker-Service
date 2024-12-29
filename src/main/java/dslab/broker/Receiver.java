@@ -1,127 +1,116 @@
 package dslab.broker;
 
-import dslab.IServer;
-import dslab.broker.enums.ElectionState;
-import dslab.config.BrokerConfig;
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-public class Receiver implements IServer {
-    private final ServerSocket serverSocket;
-    private BrokerConfig config;
-    private final ExecutorService executor;
+public class Receiver {
+    private final Broker broker;
     private volatile boolean running;
-    private volatile long lastHeartbeat;
-    private Broker broker;
-    private Thread heartbeatMonitorThread;
+    private ServerSocket serverSocket; // Reference to the server socket for proper shutdown
 
-    public Receiver(Broker broker){
+    public Receiver(Broker broker) {
         this.broker = broker;
-        this.config = broker.getConfig();
-        try {
-            this.serverSocket = new ServerSocket(this.config.electionPort());
-        } catch (IOException e) {
-            System.err.println("error creating server socket: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
+    }
 
-        this.executor = Executors.newVirtualThreadPerTaskExecutor();
+    public void start() {
         this.running = true;
 
-        this.lastHeartbeat = System.currentTimeMillis();
-        startHeartbeatMonitor();
-
-    }
-
-
-    /**
-     * Starts the heartbeat monitor if the election state is FOLLOWER.
-     */
-    public void startHeartbeatMonitor() {
-        if (heartbeatMonitorThread == null || !heartbeatMonitorThread.isAlive()) {
-            heartbeatMonitorThread = new Thread(() -> {
+        new Thread(() -> {
+            try {
+                serverSocket = new ServerSocket(broker.getConfig().electionPort());
                 while (running) {
-                    // Only run if the current state is FOLLOWER
-                    if (broker.getElectionState() == ElectionState.FOLLOWER) {
-                        if (System.currentTimeMillis() - lastHeartbeat > config.electionHeartbeatTimeoutMs()) {
-                            broker.initiateElection();
-                            // Reset lastHeartbeat to avoid continuous triggering
-                            lastHeartbeat = System.currentTimeMillis();
+                    try {
+                        Socket clientSocket = serverSocket.accept(); // Accept a connection
+                        Thread.ofVirtual().start(() -> handleConnection(clientSocket)); // Use a virtual thread to handle the connection
+                    } catch (SocketException e) {
+                        if (!running) {
+
+                        } else {
+                            e.printStackTrace();
                         }
-                        try {
-                            Thread.sleep(config.electionHeartbeatTimeoutMs() / 2); // Check periodically
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    } else {
-                        // Exit the monitor loop if no longer a FOLLOWER
-                        break;
                     }
                 }
-            });
-            heartbeatMonitorThread.start();
-        }
-    }
-
-    /**
-     * Stops the heartbeat monitor.
-     */
-    public void stopHeartbeatMonitor() {
-        if (heartbeatMonitorThread != null) {
-            heartbeatMonitorThread.interrupt();
-        }
-    }
-
-    public void resetHeartbeat() {
-        lastHeartbeat = System.currentTimeMillis();
-    }
-
-
-    @Override
-    public void run() {
-        while(running){
-            try {
-                Socket clientSocket = serverSocket.accept();
-                ReceiverHandler handler = new ReceiverHandler(this, clientSocket);
-                executor.submit(handler);
             } catch (IOException e) {
-                if (running){
-                    System.err.println("error accepting client connection: " + e.getMessage());
-                    throw new RuntimeException(e);
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    public void shutdown() {
+        this.running = false;
+
+        // Close the server socket
+        if (serverSocket != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void handleConnection(Socket clientSocket) {
+
+
+        try (clientSocket;
+             Scanner in = new Scanner(clientSocket.getInputStream());
+             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
+            // Respond with "ok LEP" on a new connection
+            out.println("ok LEP");
+
+            // Read the command from the client
+
+            while(in.hasNextLine()){
+                String command = in.nextLine();
+                if (command != null) {
+                    String response = parseCommand(command); // Parse and validate the command
+                    out.println(response);
+
+                    // If the response is valid, process the command
+                    if (response.startsWith("ok") || response.startsWith("ack") || response.startsWith("pong")) {
+                        broker.handleMessage(command);
+                    }
+
                 }
             }
-        }
-    }
 
-    public Broker getBroker() {
-        return broker;
-    }
 
-    @Override
-    public void shutdown() {
-        running = false;
-
-        try {
-            if (serverSocket != null) {
-                serverSocket.close();
-            }
         } catch (IOException e) {
-            System.err.println("error closing server socket: " + e.getMessage());
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
 
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
+
+    }
+
+    private String parseCommand(String command) {
+        String[] parts = command.split(" ");
+        String cmd = parts[0].toLowerCase();
+
+        switch (cmd) {
+            case "elect":
+                if (parts.length != 2) {
+                    return "error usage: elect <id>";
+                }
+                return "ok";
+
+            case "declare":
+                if (parts.length != 2) {
+                    return "error usage: declare <id>";
+                }
+                int leaderId = Integer.parseInt(parts[1]);
+
+                return "ack" + leaderId;
+
+            case "ping":
+                if (parts.length != 1) {
+                    return "error usage: ping";
+                }
+                return "pong";
+
+            default:
+                return "error protocol error";
         }
     }
 }

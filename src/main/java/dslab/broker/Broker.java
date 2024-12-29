@@ -9,10 +9,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class Broker implements IBroker {
 
@@ -26,27 +23,20 @@ public class Broker implements IBroker {
     private final Map<String, Queue> queues;
 
     // Leader Election
-    private Receiver receiver;
-    private Sender sender;
     private volatile ElectionState electionState;
+    private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
+
+    private final Sender sender;
+    private final Receiver receiver;
+    private final ScheduledExecutorService scheduler;
 
 
     public Broker(BrokerConfig config) {
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
 
         this.config = config;
-        this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
-        if (electionType != ElectionType.NONE) {
-            this.electionState = ElectionState.FOLLOWER;
-            this.leader = -1;
-
-            this.sender = new Sender(this);
-            this.executor.submit(sender);
-            this.receiver = new Receiver(this);
-            this.executor.submit(receiver);
-        }
 
         registerDomain(config.domain());
         this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
@@ -64,35 +54,40 @@ public class Broker implements IBroker {
 
         Exchange defaultExchange = new Exchange(ExchangeType.DEFAULT, "default");
         this.exchanges.put("default", defaultExchange);
+
+
+        // LeaderElection
+        this.scheduler = Executors.newScheduledThreadPool(
+                0, // No core threads
+                Thread.ofVirtual().factory() // Virtual thread factory
+        );
+        this.leader = -1;
+        this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
+        this.sender = new Sender(this);
+        this.receiver = new Receiver(this);
+        this.electionState = ElectionState.FOLLOWER;
+        this.heartbeatReceived = false;
+        startElectionHandling();
     }
 
-    public ElectionState getElectionState() {
-        return electionState;
+
+    public void startElectionHandling() {
+        receiver.start(); // Start listening for incoming messages
+
+        // Schedule tasks for monitoring heartbeats
+        scheduler.scheduleAtFixedRate(this::monitorHeartbeat, 0, config.electionHeartbeatTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
-    public void setElectionState(ElectionState electionState) {
-        this.electionState = electionState;
-        if (electionState == ElectionState.FOLLOWER) {
-            receiver.startHeartbeatMonitor();
-        } else {
-            receiver.stopHeartbeatMonitor();
+    private void monitorHeartbeat() {
+        if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
+            //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
+            initiateElection();
         }
-    }
-
-    public ElectionType getElectionType() {
-        return electionType;
+        heartbeatReceived = false;
     }
 
     public BrokerConfig getConfig() {
         return config;
-    }
-
-    public Receiver getReceiver() {
-        return receiver;
-    }
-
-    public Sender getSender() {
-        return sender;
     }
 
     @Override
@@ -106,7 +101,7 @@ public class Broker implements IBroker {
                 executor.submit(handler);
             } catch (IOException e) {
                 if (running){
-                    System.err.println("error accepting client connection: " + e.getMessage());
+                    //System.err.println("error accepting client connection: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
@@ -126,10 +121,51 @@ public class Broker implements IBroker {
         return config.electionId();
     }
 
+
+    public void handleMessage(String message) {
+        if (message.startsWith("ping")) {
+            heartbeatReceived = true;
+        } else if (message.startsWith("elect")) {
+            electionState = ElectionState.CANDIDATE;
+            int candidateId = Integer.parseInt(message.split(" ")[1]);
+            if (candidateId < getId()) {
+                //System.out.println("Node " + getId() + " is replacing candidate " + candidateId + " with its own ID in election");
+                sender.sendMessage("elect " + getId());
+            } else if (candidateId > getId()) {
+                sender.sendMessage(message);
+            } else if (candidateId == getId()) {
+                leader = getId();
+                electionState = ElectionState.LEADER;
+                //System.out.println("Node " + getId() + " is the new leader");
+
+                sender.sendMessage("declare " + getId());
+                sender.establishConnectionsForLeader(); // Establish persistent connections
+                registerDomain(config.electionDomain());
+            }
+        } else if (message.startsWith("declare")) {
+            int leaderId = Integer.parseInt(message.split(" ")[1]);
+            if (leaderId == getId()) {
+                electionState = ElectionState.LEADER;
+                //System.out.println("Node " + getId() + " acknowledges it is the leader");
+            } else {
+                electionState = ElectionState.FOLLOWER;
+                leader = leaderId;
+
+                sender.closeConnections(); // Stop persistent connections if no longer leader
+                //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
+                sender.sendMessage(message);
+
+            }
+        }
+    }
+
     @Override
     public void initiateElection() {
-        System.out.println("Election timed out");
-        sender.elect(this.getId());
+        electionState = ElectionState.CANDIDATE;
+        if(!sender.sendMessage("elect " + getId())){
+           leader = getId();
+           electionState = ElectionState.LEADER;
+        }
     }
 
     @Override
@@ -137,24 +173,15 @@ public class Broker implements IBroker {
         return leader;
     }
 
-    public void setLeader(int leaderID) {
-        this.leader = leaderID;
-
-        if (leaderID == this.getId()){
-            this.electionState = ElectionState.LEADER;
-            registerDomain(config.electionDomain());
-        }
-    }
-
 
 
     @Override
     public void shutdown() {
         running = false;
-        if (electionType != ElectionType.NONE) {
-            this.sender.shutdown();
-            this.receiver.shutdown();
-        }
+        scheduler.shutdown();
+        receiver.shutdown();
+        sender.shutdown();
+
 
         monitoringClient.shutdown();
 

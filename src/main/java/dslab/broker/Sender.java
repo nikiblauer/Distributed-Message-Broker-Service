@@ -1,165 +1,118 @@
 package dslab.broker;
 
-import dslab.broker.enums.ElectionState;
+import dslab.config.BrokerConfig;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Scanner;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
-public class Sender implements Runnable {
-
-    private volatile boolean running;
+public class Sender {
     private final Broker broker;
-    private final LinkedList<Socket> sockets = new LinkedList<>();
+
+    private final Map<Integer, Socket> heartbeatConnections = new HashMap<>();
+    private final Map<Integer, PrintWriter> heartbeatWriters = new HashMap<>();
+    private Timer heartbeatTimer; // Reference to the heartbeat timer
+    private boolean running;
 
     public Sender(Broker broker) {
-        this.running = true;
         this.broker = broker;
+        this.running = true;
     }
 
+    public boolean sendMessage(String message) {
+        if (!running){
+            return false;
+        }
 
-    private void connectToPeers() {
+        boolean success = false;
         for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
-            Socket socket;
-            try {
-                socket = new Socket(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
-                Scanner in = new Scanner(socket.getInputStream());
-                String connectResponse = in.nextLine();
-                if (connectResponse.equalsIgnoreCase("ok LEP")){
-                    sockets.add(socket);
-                }
-            } catch (IOException e) {
-                //throw new RuntimeException(e);
-            }
+            String host = broker.getConfig().electionPeerHosts()[i];
+            int port = broker.getConfig().electionPeerPorts()[i];
 
-        }
-    }
+            //System.out.println("Sending message: " + message + " to " + host + ":" + port);
 
-    private Socket connectToPeer(String host, int port){
-        Socket socket;
-        try {
-            socket = new Socket(host, port);
-            Scanner in = new Scanner(socket.getInputStream());
-            if (in.hasNextLine()){
-                String connectResponse = in.nextLine();
-                if (connectResponse.equalsIgnoreCase("ok LEP")){
-                    return socket;
-                }
-            }
-
-        } catch (IOException e) {
-            //throw new RuntimeException(e);
-        }
-
-        return null;
-    }
+            try (Socket socket = new Socket(host, port);
+                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
 
-
-    public void ping() {
-        connectToPeers();
-        for (Socket socket : sockets) {
-            PrintWriter out = null;
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-                out.println("ping");
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-                //throw new RuntimeException(e);
-            }
-        }
-        disconnectFromPeers();
-    }
-
-
-
-
-
-    public void elect(int id) {
-        for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
-            Socket socket;
-            try {
-                socket = connectToPeer(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
-                if (socket != null) {
-                    sockets.add(socket);
-                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                    out.println("elect " + id);
-                    Scanner in = new Scanner(socket.getInputStream());
-                    if (in.nextLine().equals("ok")){
+                String response = in.readLine();
+                out.println(message);
+                response = in.readLine();
+                if (response != null){
+                    if (response.equals("ok") || response.startsWith("ack")){
+                        success = true;
                         break;
                     }
                 }
 
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
 
-                //throw new RuntimeException(e);
+            } catch (IOException e) {
+                //System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
             }
+
+
+
         }
-        disconnectFromPeers();
+        return success;
     }
 
+    public void establishConnectionsForLeader() {
+        if (!running){
+            return;
+        }
+        closeConnections(); // Ensure no stale connections
 
-    public void declare(int id) {
-        this.broker.setLeader(id);
         for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
-            Socket socket;
+            String host = broker.getConfig().electionPeerHosts()[i];
+            int port = broker.getConfig().electionPeerPorts()[i];
+            int peerID = broker.getConfig().electionPeerIds()[i];
+
+
             try {
-                socket = connectToPeer(broker.getConfig().electionPeerHosts()[i], broker.getConfig().electionPeerPorts()[i]);
-                if (socket != null) {
-                    sockets.add(socket);
-                    Scanner in = new Scanner(socket.getInputStream());
-                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                    out.println("declare " + id);
-                    String response = in.nextLine();
-                    if (response.equals("ok") || response.startsWith("ack")) {
-                        break;
-                    }
-                }
+                Socket socket = new Socket(host, port);
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+
+                heartbeatConnections.put(peerID, socket);
+                heartbeatWriters.put(peerID, writer);
+
+                //System.out.println("Leader " + broker.getId() + " established persistent connection to Node " + peerID + " at port " + port);
             } catch (IOException e) {
-                System.out.println(e.getMessage());
-                //throw new RuntimeException(e);
+                //System.out.println("Leader " + broker.getId() + ": Unable to establish connection to Node " + peerID + " at port " + port);
             }
+
         }
-        disconnectFromPeers();
+
+        // Send periodic heartbeats
+        heartbeatTimer = new Timer();
+        heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                for (PrintWriter writer : heartbeatWriters.values()) {
+                    writer.println("ping");
+                }
+            }
+        }, 0, 50);
     }
 
+    public void closeConnections() {
+        // Stop the heartbeat timer
 
-
-
-    private void disconnectFromPeers() {
-        for (Socket socket : sockets) {
+        for (Socket socket : heartbeatConnections.values()) {
             try {
                 socket.close();
             } catch (IOException e) {
-                //throw new RuntimeException(e);
+                //System.out.println("Node " + broker.getId() + ": Error closing connection");
             }
         }
-        sockets.clear();
-    }
-
-
-    @Override
-    public void run() {
-        while (running) {
-            if (broker.getElectionState() == ElectionState.LEADER){
-                ping();
-            }
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
+        heartbeatConnections.clear();
+        heartbeatWriters.clear();
     }
 
     public void shutdown() {
-        running = false;
+        this.running = false;
+        closeConnections();
     }
-
 }
+
