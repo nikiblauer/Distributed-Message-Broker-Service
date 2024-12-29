@@ -98,7 +98,7 @@ public class Receiver {
                 }
                 if (broker.getElectionType() == ElectionType.RAFT) {
                     if (broker.getElectionState() != ElectionState.CANDIDATE){
-                        broker.incTerm();
+                        broker.incTerm(); 
                         broker.currentVote = Integer.parseInt(parts[1]);
                         return "vote " + broker.getId() + " " + parts[1];
                     } else {
