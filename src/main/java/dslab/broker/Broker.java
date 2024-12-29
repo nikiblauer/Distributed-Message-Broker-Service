@@ -34,11 +34,19 @@ public class Broker implements IBroker {
 
 
     public Broker(BrokerConfig config) {
-        this.executor = Executors.newVirtualThreadPerTaskExecutor();
+
+
 
         this.config = config;
 
+
+
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
+
+
         registerDomain(config.domain());
+
+
         this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
 
         try {
@@ -55,7 +63,6 @@ public class Broker implements IBroker {
         Exchange defaultExchange = new Exchange(ExchangeType.DEFAULT, "default");
         this.exchanges.put("default", defaultExchange);
 
-
         // LeaderElection
         this.scheduler = Executors.newScheduledThreadPool(
                 0, // No core threads
@@ -63,11 +70,13 @@ public class Broker implements IBroker {
         );
         this.leader = -1;
         this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
+        this.electionState = ElectionState.FOLLOWER;
+
         this.sender = new Sender(this);
         this.receiver = new Receiver(this);
-        this.electionState = ElectionState.FOLLOWER;
-        this.heartbeatReceived = false;
+        this.heartbeatReceived = true;
         startElectionHandling();
+
     }
 
 
@@ -163,8 +172,15 @@ public class Broker implements IBroker {
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
         if(!sender.sendMessage("elect " + getId())){
+
+            System.out.println("elect " + getId());
             leader = getId();
             electionState = ElectionState.LEADER;
+            //System.out.println("Node " + getId() + " is the new leader");
+
+            sender.sendMessage("declare " + getId());
+            sender.establishConnectionsForLeader(); // Establish persistent connections
+            registerDomain(config.electionDomain());
         }
     }
 

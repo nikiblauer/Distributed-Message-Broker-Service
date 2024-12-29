@@ -37,13 +37,18 @@ public class Sender {
 
 
                 String response = in.readLine();
+
+                if (!response.equals("ok LEP")){
+                    continue;
+                }
+
                 out.println(message);
                 response = in.readLine();
                 if (response != null){
-                    if (response.equals("ok") || response.startsWith("ack")){
-                        success = true;
-                        break;
-                    }
+                    success = true;
+                    break;
+
+
                 }
 
 
@@ -54,6 +59,7 @@ public class Sender {
 
 
         }
+
         return success;
     }
 
@@ -93,7 +99,7 @@ public class Sender {
                     writer.println("ping");
                 }
             }
-        }, 0, 50);
+        }, 0, 20);
     }
 
     public void closeConnections() {
