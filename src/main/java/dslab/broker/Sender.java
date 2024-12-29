@@ -1,16 +1,18 @@
 package dslab.broker;
 
+import dslab.broker.enums.ElectionType;
 import dslab.config.BrokerConfig;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Sender {
     private final Broker broker;
 
-    private final Map<Integer, Socket> heartbeatConnections = new HashMap<>();
-    private final Map<Integer, PrintWriter> heartbeatWriters = new HashMap<>();
+    private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
+    private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
     private Timer heartbeatTimer; // Reference to the heartbeat timer
     private boolean running;
 
@@ -29,6 +31,13 @@ public class Sender {
             String host = broker.getConfig().electionPeerHosts()[i];
             int port = broker.getConfig().electionPeerPorts()[i];
 
+            if ((broker.getElectionType() == ElectionType.BULLY) && message.startsWith("elect"))
+            {
+                if (broker.getId() > broker.getConfig().electionPeerIds()[i]){
+                    continue;
+                }
+            }
+
             //System.out.println("Sending message: " + message + " to " + host + ":" + port);
 
             try (Socket socket = new Socket(host, port);
@@ -46,7 +55,10 @@ public class Sender {
                 response = in.readLine();
                 if (response != null){
                     success = true;
-                    break;
+                    if (broker.getElectionType() != ElectionType.BULLY){
+                        break;
+                    }
+
 
 
                 }

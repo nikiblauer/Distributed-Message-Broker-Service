@@ -139,7 +139,20 @@ public class Broker implements IBroker {
             int candidateId = Integer.parseInt(message.split(" ")[1]);
             if (candidateId < getId()) {
                 //System.out.println("Node " + getId() + " is replacing candidate " + candidateId + " with its own ID in election");
-                sender.sendMessage("elect " + getId());
+                if (electionType != ElectionType.BULLY) {
+                    sender.sendMessage("elect " + getId());
+                } else {
+                    if(!sender.sendMessage("elect " + getId())){
+
+                        leader = getId();
+                        electionState = ElectionState.LEADER;
+                        //System.out.println("Node " + getId() + " is the new leader");
+
+                        sender.sendMessage("declare " + getId());
+                        sender.establishConnectionsForLeader(); // Establish persistent connections
+                        registerDomain(config.electionDomain());
+                    }
+                }
             } else if (candidateId > getId()) {
                 sender.sendMessage(message);
             } else if (candidateId == getId()) {
@@ -153,18 +166,27 @@ public class Broker implements IBroker {
             }
         } else if (message.startsWith("declare")) {
             int leaderId = Integer.parseInt(message.split(" ")[1]);
-            if (leaderId == getId()) {
-                electionState = ElectionState.LEADER;
-                //System.out.println("Node " + getId() + " acknowledges it is the leader");
+            if (electionType != ElectionType.BULLY){
+                if (leaderId == getId()) {
+                    electionState = ElectionState.LEADER;
+                    //System.out.println("Node " + getId() + " acknowledges it is the leader");
+                } else {
+                    electionState = ElectionState.FOLLOWER;
+                    leader = leaderId;
+
+                    sender.closeConnections(); // Stop persistent connections if no longer leader
+                    //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
+                    sender.sendMessage(message);
+
+                }
             } else {
                 electionState = ElectionState.FOLLOWER;
                 leader = leaderId;
 
                 sender.closeConnections(); // Stop persistent connections if no longer leader
                 //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
-                sender.sendMessage(message);
-
             }
+
         }
     }
 
@@ -189,6 +211,9 @@ public class Broker implements IBroker {
         return leader;
     }
 
+    public ElectionType getElectionType() {
+        return electionType;
+    }
 
 
     @Override
