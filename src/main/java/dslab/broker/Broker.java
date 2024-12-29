@@ -47,7 +47,7 @@ public class Broker implements IBroker {
         try {
             this.serverSocket = new ServerSocket(config.port());
         } catch (IOException e) {
-            System.err.println("error creating server socket: " + e.getMessage());
+            System.out.println("error creating server socket: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
@@ -170,10 +170,7 @@ public class Broker implements IBroker {
         if (message.startsWith("ping")) {
             heartbeatReceived.set(true);
         } else if (message.startsWith("elect")) {
-            System.out.println("id: "+ getId());
-            System.out.println("peerID: " + message.split(" ")[1]);
             boolean hasResponse = sender.sendMessageBully("elect " + getId());
-            System.out.println("no responses: " + hasResponse);
 
             if (!hasResponse) {
                 leader.set(getId());
@@ -184,16 +181,13 @@ public class Broker implements IBroker {
                 registerDomain(config.electionDomain());
             }
         } else if (message.startsWith("declare")) {
-            System.out.println(message);
             electionState = ElectionState.FOLLOWER;
 
             synchronized (this){
                 leader.set(Integer.parseInt(message.split(" ")[1]));
             }
 
-            System.out.println(getLeader());
             sender.closeConnections(); // Stop persistent connections if no longer leader
-            System.out.println(getLeader());
 
         }
     }
@@ -244,7 +238,7 @@ public class Broker implements IBroker {
                 serverSocket.close();
             }
         } catch (IOException e) {
-            System.err.println("error closing server socket: " + e.getMessage());
+            System.out.println("error closing server socket: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
