@@ -10,6 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Broker implements IBroker {
 
@@ -24,9 +26,10 @@ public class Broker implements IBroker {
 
     // Leader Election
     private volatile ElectionState electionState;
-    private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
-    private volatile int leader;
+
+    private final AtomicInteger leader = new AtomicInteger(-1);
+    private final AtomicBoolean heartbeatReceived = new AtomicBoolean(false);
 
     private final Sender sender;
     private final Receiver receiver;
@@ -61,12 +64,12 @@ public class Broker implements IBroker {
                 0, // No core threads
                 Thread.ofVirtual().factory() // Virtual thread factory
         );
-        this.leader = -1;
+        this.leader.set(-1);
         this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
         this.sender = new Sender(this);
         this.receiver = new Receiver(this);
         this.electionState = ElectionState.FOLLOWER;
-        this.heartbeatReceived = false;
+        this.heartbeatReceived.set(false);
         startElectionHandling();
     }
 
@@ -79,11 +82,11 @@ public class Broker implements IBroker {
     }
 
     private void monitorHeartbeat() {
-        if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
+        if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived.get()) {
             //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
         }
-        heartbeatReceived = false;
+        heartbeatReceived.set( false);
     }
 
     public BrokerConfig getConfig() {
@@ -124,7 +127,7 @@ public class Broker implements IBroker {
 
     public void handleMessage(String message) {
         if (message.startsWith("ping")) {
-            heartbeatReceived = true;
+            heartbeatReceived.set(true);;
         } else if (message.startsWith("elect")) {
             electionState = ElectionState.CANDIDATE;
             int candidateId = Integer.parseInt(message.split(" ")[1]);
@@ -134,7 +137,7 @@ public class Broker implements IBroker {
             } else if (candidateId > getId()) {
                 sender.sendMessage(message);
             } else if (candidateId == getId()) {
-                leader = getId();
+                leader.set(getId());
                 electionState = ElectionState.LEADER;
                 //System.out.println("Node " + getId() + " is the new leader");
 
@@ -149,7 +152,7 @@ public class Broker implements IBroker {
                 //System.out.println("Node " + getId() + " acknowledges it is the leader");
             } else {
                 electionState = ElectionState.FOLLOWER;
-                leader = leaderId;
+                leader.set(leaderId);
 
                 sender.closeConnections(); // Stop persistent connections if no longer leader
                 //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
@@ -159,18 +162,67 @@ public class Broker implements IBroker {
         }
     }
 
-    @Override
-    public void initiateElection() {
-        electionState = ElectionState.CANDIDATE;
-        if(!sender.sendMessage("elect " + getId())){
-           leader = getId();
-           electionState = ElectionState.LEADER;
+    public ElectionType getElectionType(){
+        return electionType;
+    }
+
+    public void handleMessageBully(String message) {
+        if (message.startsWith("ping")) {
+            heartbeatReceived.set(true);
+        } else if (message.startsWith("elect")) {
+            System.out.println("id: "+ getId());
+            System.out.println("peerID: " + message.split(" ")[1]);
+            boolean hasResponse = sender.sendMessageBully("elect " + getId());
+            System.out.println("no responses: " + hasResponse);
+
+            if (!hasResponse) {
+                leader.set(getId());
+                electionState = ElectionState.LEADER;
+
+                sender.sendMessageBully("declare " + getId());
+                sender.establishConnectionsForLeader(); // Establish persistent connections
+                registerDomain(config.electionDomain());
+            }
+        } else if (message.startsWith("declare")) {
+            System.out.println(message);
+            electionState = ElectionState.FOLLOWER;
+
+            synchronized (this){
+                leader.set(Integer.parseInt(message.split(" ")[1]));
+            }
+
+            System.out.println(getLeader());
+            sender.closeConnections(); // Stop persistent connections if no longer leader
+            System.out.println(getLeader());
+
         }
     }
 
     @Override
-    public int getLeader() {
-        return leader;
+    public synchronized void initiateElection() {
+        electionState = ElectionState.CANDIDATE;
+        if (electionType != ElectionType.BULLY){
+            if(!sender.sendMessage("elect " + getId())){
+                leader.set(getId());
+                electionState = ElectionState.LEADER;
+            }
+        } else {
+            boolean hasResponse = sender.sendMessageBully("elect " + getId());
+            if (!hasResponse) {
+                leader.set(getId());
+                electionState = ElectionState.LEADER;
+
+                sender.sendMessageBully("declare " + getId());
+                sender.establishConnectionsForLeader(); // Establish persistent connections
+                registerDomain(config.electionDomain());
+            }
+        }
+
+    }
+
+    @Override
+    public synchronized int getLeader() {
+        return leader.get();
     }
 
 

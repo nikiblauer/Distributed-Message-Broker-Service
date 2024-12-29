@@ -1,5 +1,7 @@
 package dslab.broker;
 
+import dslab.broker.enums.ElectionType;
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
@@ -70,7 +72,11 @@ public class Receiver {
 
                     // If the response is valid, process the command
                     if (response.startsWith("ok") || response.startsWith("ack") || response.startsWith("pong")) {
-                        broker.handleMessage(command);
+                        if (broker.getElectionType() == ElectionType.BULLY){
+                            broker.handleMessageBully(command);
+                        } else {
+                            broker.handleMessage(command);
+                        }
                     }
 
                 }
