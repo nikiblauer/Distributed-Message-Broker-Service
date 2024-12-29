@@ -10,8 +10,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Broker implements IBroker {
 
@@ -26,10 +24,9 @@ public class Broker implements IBroker {
 
     // Leader Election
     private volatile ElectionState electionState;
+    private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
-
-    private final AtomicInteger leader = new AtomicInteger(-1);
-    private final AtomicBoolean heartbeatReceived = new AtomicBoolean(false);
+    private volatile int leader;
 
     private final Sender sender;
     private final Receiver receiver;
@@ -47,7 +44,7 @@ public class Broker implements IBroker {
         try {
             this.serverSocket = new ServerSocket(config.port());
         } catch (IOException e) {
-            System.out.println("error creating server socket: " + e.getMessage());
+            System.err.println("error creating server socket: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
@@ -64,12 +61,12 @@ public class Broker implements IBroker {
                 0, // No core threads
                 Thread.ofVirtual().factory() // Virtual thread factory
         );
-        this.leader.set(-1);
+        this.leader = -1;
         this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
         this.sender = new Sender(this);
         this.receiver = new Receiver(this);
         this.electionState = ElectionState.FOLLOWER;
-        this.heartbeatReceived.set(false);
+        this.heartbeatReceived = false;
         startElectionHandling();
     }
 
@@ -82,11 +79,11 @@ public class Broker implements IBroker {
     }
 
     private void monitorHeartbeat() {
-        if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived.get()) {
+        if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
             //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
         }
-        heartbeatReceived.set( false);
+        heartbeatReceived = false;
     }
 
     public BrokerConfig getConfig() {
@@ -127,7 +124,7 @@ public class Broker implements IBroker {
 
     public void handleMessage(String message) {
         if (message.startsWith("ping")) {
-            heartbeatReceived.set(true);;
+            heartbeatReceived = true;
         } else if (message.startsWith("elect")) {
             electionState = ElectionState.CANDIDATE;
             int candidateId = Integer.parseInt(message.split(" ")[1]);
@@ -137,7 +134,7 @@ public class Broker implements IBroker {
             } else if (candidateId > getId()) {
                 sender.sendMessage(message);
             } else if (candidateId == getId()) {
-                leader.set(getId());
+                leader = getId();
                 electionState = ElectionState.LEADER;
                 //System.out.println("Node " + getId() + " is the new leader");
 
@@ -152,7 +149,7 @@ public class Broker implements IBroker {
                 //System.out.println("Node " + getId() + " acknowledges it is the leader");
             } else {
                 electionState = ElectionState.FOLLOWER;
-                leader.set(leaderId);
+                leader = leaderId;
 
                 sender.closeConnections(); // Stop persistent connections if no longer leader
                 //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
@@ -162,61 +159,18 @@ public class Broker implements IBroker {
         }
     }
 
-    public ElectionType getElectionType(){
-        return electionType;
-    }
-
-    public void handleMessageBully(String message) {
-        if (message.startsWith("ping")) {
-            heartbeatReceived.set(true);
-        } else if (message.startsWith("elect")) {
-            boolean hasResponse = sender.sendMessageBully("elect " + getId());
-
-            if (!hasResponse) {
-                leader.set(getId());
-                electionState = ElectionState.LEADER;
-
-                sender.sendMessageBully("declare " + getId());
-                sender.establishConnectionsForLeader(); // Establish persistent connections
-                registerDomain(config.electionDomain());
-            }
-        } else if (message.startsWith("declare")) {
-            electionState = ElectionState.FOLLOWER;
-
-            synchronized (this){
-                leader.set(Integer.parseInt(message.split(" ")[1]));
-            }
-
-            sender.closeConnections(); // Stop persistent connections if no longer leader
-
-        }
-    }
-
     @Override
-    public synchronized void initiateElection() {
+    public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-        if (electionType != ElectionType.BULLY){
-            if(!sender.sendMessage("elect " + getId())){
-                leader.set(getId());
-                electionState = ElectionState.LEADER;
-            }
-        } else {
-            boolean hasResponse = sender.sendMessageBully("elect " + getId());
-            if (!hasResponse) {
-                leader.set(getId());
-                electionState = ElectionState.LEADER;
-
-                sender.sendMessageBully("declare " + getId());
-                sender.establishConnectionsForLeader(); // Establish persistent connections
-                registerDomain(config.electionDomain());
-            }
+        if(!sender.sendMessage("elect " + getId())){
+            leader = getId();
+            electionState = ElectionState.LEADER;
         }
-
     }
 
     @Override
-    public synchronized int getLeader() {
-        return leader.get();
+    public int getLeader() {
+        return leader;
     }
 
 
@@ -238,7 +192,7 @@ public class Broker implements IBroker {
                 serverSocket.close();
             }
         } catch (IOException e) {
-            System.out.println("error closing server socket: " + e.getMessage());
+            System.err.println("error closing server socket: " + e.getMessage());
             throw new RuntimeException(e);
         }
 
