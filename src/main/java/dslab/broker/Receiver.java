@@ -27,11 +27,7 @@ public class Receiver {
                         Socket clientSocket = serverSocket.accept(); // Accept a connection
                         Thread.ofVirtual().start(() -> handleConnection(clientSocket)); // Use a virtual thread to handle the connection
                     } catch (SocketException e) {
-                        if (!running) {
 
-                        } else {
-                            e.printStackTrace();
-                        }
                     }
                 }
             } catch (IOException e) {
@@ -98,7 +94,7 @@ public class Receiver {
                 }
                 if (broker.getElectionType() == ElectionType.RAFT) {
                     if (broker.getElectionState() != ElectionState.CANDIDATE){
-                        broker.incTerm(); 
+                        broker.incTerm();
                         broker.currentVote = Integer.parseInt(parts[1]);
                         return "vote " + broker.getId() + " " + parts[1];
                     } else {
