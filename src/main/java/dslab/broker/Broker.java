@@ -27,20 +27,17 @@ public class Broker implements IBroker {
     private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
+    private volatile int term;
+    public volatile int currentVote = -1;
 
     private final Sender sender;
     private final Receiver receiver;
     private final ScheduledExecutorService scheduler;
 
 
+
     public Broker(BrokerConfig config) {
-
-
-
         this.config = config;
-
-
-
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
 
 
@@ -99,6 +96,18 @@ public class Broker implements IBroker {
         return config;
     }
 
+    public int getTerm() {
+        return term;
+    }
+
+    public ElectionState getElectionState() {
+        return electionState;
+    }
+
+    public void incTerm() {
+        term++;
+    }
+
     @Override
     public void run() {
         this.running = true;
@@ -136,13 +145,18 @@ public class Broker implements IBroker {
             heartbeatReceived = true;
         } else if (message.startsWith("elect")) {
             electionState = ElectionState.CANDIDATE;
+            if (electionType == ElectionType.RAFT){
+                return;
+            }
+
+
             int candidateId = Integer.parseInt(message.split(" ")[1]);
             if (candidateId < getId()) {
                 //System.out.println("Node " + getId() + " is replacing candidate " + candidateId + " with its own ID in election");
                 if (electionType != ElectionType.BULLY) {
                     sender.sendMessage("elect " + getId());
                 } else {
-                    if(!sender.sendMessage("elect " + getId())){
+                    if(sender.sendMessage("elect " + getId()) == 0){
 
                         leader = getId();
                         electionState = ElectionState.LEADER;
@@ -165,8 +179,10 @@ public class Broker implements IBroker {
                 registerDomain(config.electionDomain());
             }
         } else if (message.startsWith("declare")) {
+
+
             int leaderId = Integer.parseInt(message.split(" ")[1]);
-            if (electionType != ElectionType.BULLY){
+            if (electionType == ElectionType.RING){
                 if (leaderId == getId()) {
                     electionState = ElectionState.LEADER;
                     //System.out.println("Node " + getId() + " acknowledges it is the leader");
@@ -193,17 +209,34 @@ public class Broker implements IBroker {
     @Override
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-        if(!sender.sendMessage("elect " + getId())){
+        term += 1;
 
-            System.out.println("elect " + getId());
-            leader = getId();
-            electionState = ElectionState.LEADER;
-            //System.out.println("Node " + getId() + " is the new leader");
+        if (electionType != ElectionType.RAFT) {
+            if(sender.sendMessage("elect " + getId()) == 0){
 
-            sender.sendMessage("declare " + getId());
-            sender.establishConnectionsForLeader(); // Establish persistent connections
-            registerDomain(config.electionDomain());
+                System.out.println("elect " + getId());
+                leader = getId();
+                electionState = ElectionState.LEADER;
+                //System.out.println("Node " + getId() + " is the new leader");
+
+                sender.sendMessage("declare " + getId());
+                sender.establishConnectionsForLeader(); // Establish persistent connections
+                registerDomain(config.electionDomain());
+            }
+        } else {
+            int votes = sender.sendMessage("elect " + getId());
+
+            if (votes > config.electionPeerIds().length/2){
+                leader = getId();
+                electionState = ElectionState.LEADER;
+                //System.out.println("Node " + getId() + " is the new leader");
+
+                sender.sendMessage("declare " + getId());
+                sender.establishConnectionsForLeader(); // Establish persistent connections
+                registerDomain(config.electionDomain());
+            }
         }
+
     }
 
     @Override

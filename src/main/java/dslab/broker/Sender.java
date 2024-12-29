@@ -21,12 +21,15 @@ public class Sender {
         this.running = true;
     }
 
-    public boolean sendMessage(String message) {
+    public int sendMessage(String message) {
         if (!running){
-            return false;
+            return 1;
         }
 
         boolean success = false;
+        int votes = 0;
+
+
         for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
             String host = broker.getConfig().electionPeerHosts()[i];
             int port = broker.getConfig().electionPeerPorts()[i];
@@ -55,8 +58,17 @@ public class Sender {
                 response = in.readLine();
                 if (response != null){
                     success = true;
-                    if (broker.getElectionType() != ElectionType.BULLY){
+                    if (broker.getElectionType() == ElectionType.RING){
                         break;
+                    } else if (broker.getElectionType() == ElectionType.RAFT){
+                        if (response.startsWith("vote")){
+                            String[] parts = response.split(" ");
+                            int vote = Integer.parseInt(parts[2]);
+                            if (vote == broker.getId()){
+                                votes += 1;
+                            }
+                        }
+
                     }
 
 
@@ -68,11 +80,13 @@ public class Sender {
                 //System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
             }
 
-
-
         }
 
-        return success;
+        if (broker.getElectionType() == ElectionType.RAFT){
+            return votes;
+        }
+
+        return success ? 1 : 0;
     }
 
     public void establishConnectionsForLeader() {

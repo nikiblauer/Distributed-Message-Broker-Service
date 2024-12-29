@@ -1,5 +1,8 @@
 package dslab.broker;
 
+import dslab.broker.enums.ElectionState;
+import dslab.broker.enums.ElectionType;
+
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
@@ -69,7 +72,7 @@ public class Receiver {
                     out.println(response);
 
                     // If the response is valid, process the command
-                    if (response.startsWith("ok") || response.startsWith("ack") || response.startsWith("pong")) {
+                    if (response.startsWith("ok") || response.startsWith("ack") || response.startsWith("pong") || response.startsWith("vote")) {
                         broker.handleMessage(command);
                     }
 
@@ -92,6 +95,15 @@ public class Receiver {
             case "elect":
                 if (parts.length != 2) {
                     return "error usage: elect <id>";
+                }
+                if (broker.getElectionType() == ElectionType.RAFT) {
+                    if (broker.getElectionState() != ElectionState.CANDIDATE){
+                        broker.incTerm();
+                        broker.currentVote = Integer.parseInt(parts[1]);
+                        return "vote " + broker.getId() + " " + parts[1];
+                    } else {
+                        return "vote " + broker.getId() + " " + broker.currentVote;
+                    }
                 }
                 return "ok";
 
