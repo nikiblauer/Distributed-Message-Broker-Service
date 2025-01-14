@@ -96,7 +96,6 @@ public class Receiver {
                 if (broker.getElectionType() == ElectionType.RAFT) {
                     if (!broker.hasVoted){
                         broker.currentVote = Integer.parseInt(parts[1]);
-                        broker.incTerm();
                         broker.hasVoted = true;
                         //System.out.println("EINS " + broker.currentVote);
                         return "vote " + broker.getId() + " " + broker.currentVote;

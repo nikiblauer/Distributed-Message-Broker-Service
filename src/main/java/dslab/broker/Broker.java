@@ -27,7 +27,6 @@ public class Broker implements IBroker {
     private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
-    private volatile int term;
     public volatile boolean hasVoted;
     public volatile int currentVote = -1;
 
@@ -98,16 +97,9 @@ public class Broker implements IBroker {
         return config;
     }
 
-    public int getTerm() {
-        return term;
-    }
 
     public ElectionState getElectionState() {
         return electionState;
-    }
-
-    public void incTerm() {
-        term++;
     }
 
     @Override
@@ -183,6 +175,7 @@ public class Broker implements IBroker {
             }
         } else if (message.startsWith("declare")) {
 
+            sender.closeConnections(); // Stop persistent connections if no longer leader
 
             int leaderId = Integer.parseInt(message.split(" ")[1]);
             if (electionType == ElectionType.RING){
@@ -193,13 +186,11 @@ public class Broker implements IBroker {
                     electionState = ElectionState.FOLLOWER;
                     leader = leaderId;
 
-                    sender.closeConnections(); // Stop persistent connections if no longer leader
                     //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
                     sender.sendMessage(message);
 
                 }
             } else {
-                sender.closeConnections(); // Stop persistent connections if no longer leader
 
                 electionState = ElectionState.FOLLOWER;
                 leader = leaderId;
@@ -215,7 +206,6 @@ public class Broker implements IBroker {
     @Override
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-        term += 1;
 
         if (electionType != ElectionType.RAFT) {
             if(sender.sendMessage("elect " + getId()) == 0){
