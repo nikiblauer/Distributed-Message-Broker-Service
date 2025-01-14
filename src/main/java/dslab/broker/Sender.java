@@ -10,29 +10,27 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Sender {
     private final Broker broker;
+    private final int[] peerIds;
+    private final String[] peerHosts;
+    private final int[] peerPorts;
 
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
     private Timer heartbeatTimer; // Reference to the heartbeat timer
-    private boolean running;
 
     public Sender(Broker broker) {
         this.broker = broker;
-        this.running = true;
+        this.peerIds = broker.getConfig().electionPeerIds();
+        this.peerHosts = broker.getConfig().electionPeerHosts();
+        this.peerPorts = broker.getConfig().electionPeerPorts();
     }
 
     public int sendMessage(String message) {
-        if (!running){
-            return 1;
-        }
-
         boolean success = false;
         int votes = 0;
 
 
-        for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
-            String host = broker.getConfig().electionPeerHosts()[i];
-            int port = broker.getConfig().electionPeerPorts()[i];
+        for (int i = 0; i < peerIds.length; i++) {
 
             if ((broker.getElectionType() == ElectionType.BULLY) && message.startsWith("elect"))
             {
@@ -42,7 +40,7 @@ public class Sender {
             }
 
 
-            try (Socket socket = new Socket(host, port);
+            try (Socket socket = new Socket(peerHosts[i], peerPorts[i]);
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
@@ -72,7 +70,7 @@ public class Sender {
                     }
                 }
             } catch (IOException e) {
-                System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
+                System.out.println("Unable to contact Node " + peerIds[i]);
             }
 
         }
@@ -85,30 +83,25 @@ public class Sender {
     }
 
     public void establishConnectionsForLeader() {
-        if (!running){
-            return;
-        }
         closeConnections(); // Ensure no stale connections
 
-        for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
-            String host = broker.getConfig().electionPeerHosts()[i];
-            int port = broker.getConfig().electionPeerPorts()[i];
-            int peerID = broker.getConfig().electionPeerIds()[i];
-
-
+        for (int i = 0; i < peerIds.length; i++) {
             try {
-                Socket socket = new Socket(host, port);
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                Socket socket = new Socket(peerHosts[i], peerPorts[i]);
                 PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
 
-                heartbeatConnections.put(peerID, socket);
-                heartbeatWriters.put(peerID, writer);
+                heartbeatConnections.put(peerIds[i], socket);
+                heartbeatWriters.put(peerIds[i], writer);
             } catch (IOException e) {
-                System.out.println("Unable to establish connection to Node " + peerID + " at port " + port);
+                System.out.println("Unable to establish connection to Node " + peerIds[i]);
             }
 
         }
 
+        startHeartbeatTimer();
+    }
+
+    private void startHeartbeatTimer() {
         // Send periodic heartbeats
         heartbeatTimer = new Timer();
         heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
@@ -121,11 +114,15 @@ public class Sender {
         }, 0, 20);
     }
 
-    public void closeConnections() {
+    private void stopHeartbeatTimer() {
         // Stop the heartbeat timer, when no longer leader
         if (heartbeatTimer != null){
             heartbeatTimer.cancel();
         }
+    }
+
+    public void closeConnections() {
+        stopHeartbeatTimer();
 
         for (Socket socket : heartbeatConnections.values()) {
             try {
@@ -141,7 +138,6 @@ public class Sender {
     }
 
     public void shutdown() {
-        this.running = false;
         closeConnections();
     }
 }
