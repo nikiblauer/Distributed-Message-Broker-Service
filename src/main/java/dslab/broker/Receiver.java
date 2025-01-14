@@ -6,46 +6,46 @@ import dslab.broker.enums.ElectionType;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Receiver {
+public class Receiver implements Runnable {
     private final Broker broker;
     private volatile boolean running;
-    private ServerSocket serverSocket; // Reference to the server socket for proper shutdown
+    private ServerSocket serverSocket;
+    private final ExecutorService executor;
+
 
     public Receiver(Broker broker) {
         this.broker = broker;
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
-    public void start() {
+    @Override
+    public void run() {
         this.running = true;
 
-        new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(broker.getConfig().electionPort());
-                while (running) {
-                    try {
-                        Socket clientSocket = serverSocket.accept();
-                        Thread.ofVirtual().start(() -> handleConnection(clientSocket)); // Use a virtual thread to handle the connection
-                    } catch (SocketException e) {
-
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            serverSocket = new ServerSocket(broker.getConfig().electionPort());
+            while (running) {
+                acceptClientConnections();
             }
-        }).start();
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
-    public void shutdown() {
-        this.running = false;
 
-        // Close the server socket
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                System.out.println("Error closing server socket: " + e.getMessage());
+    private void acceptClientConnections(){
+        try {
+            Socket clientSocket = serverSocket.accept();
+            executor.submit(() -> handleConnection(clientSocket));
+        } catch (SocketException e) {
+            if (running) {
+                System.err.println("Socket exception: " + e.getMessage());
             }
+        } catch (IOException e) {
+            System.err.println("Error accepting client connection: " + e.getMessage());
         }
     }
 
@@ -55,62 +55,100 @@ public class Receiver {
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
             out.println("ok LEP");
-
             broker.heartbeatReceived = true; // update heartbeat
+
             while(in.hasNextLine()){
-                String command = in.nextLine();
-                if (command != null) {
-                    String response = parseCommand(command); // Parse and validate the command
-                    out.println(response);
-
-                    // If the response is valid, process the command
-                    if (response.startsWith("ok") || response.startsWith("ack") || response.startsWith("pong") || response.startsWith("vote")) {
-                        broker.handleMessage(command);
-                    }
-
-                }
+                processClientCommand(in.nextLine(), out);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
 
 
+    }
+
+    private void processClientCommand(String command, PrintWriter out) {
+        if (command == null || command.isEmpty()) {
+            return;
+        }
+
+        String response = parseCommand(command); // Parse and validate the command
+        out.println(response);
+
+        // If the response is valid, process the command
+        if (isResponseValid(response)) {
+            broker.handleMessage(command);
+        }
+    }
+
+    private boolean isResponseValid(String response) {
+        return response.startsWith("ok") || response.startsWith("ack") ||
+                response.startsWith("pong") || response.startsWith("vote");
     }
 
     private String parseCommand(String command) {
         String[] parts = command.split(" ");
         String cmd = parts[0].toLowerCase();
 
-        switch (cmd) {
-            case "elect":
-                broker.electionState = ElectionState.CANDIDATE;
-                if (parts.length != 2) {
-                    return "error usage: elect <id>";
-                }
-                if (broker.getElectionType() == ElectionType.RAFT) {
-                    if (!broker.hasVoted){
-                        broker.currentVote = Integer.parseInt(parts[1]);
-                        broker.hasVoted = true;
-                    }
-                    return "vote " + broker.getId() + " " + broker.currentVote;
-                }
-                return "ok";
+        return switch (cmd) {
+            case "elect" -> handleElectCommand(parts);
+            case "declare" -> handleDeclareCommand(parts);
+            case "ping" -> handlePingCommand(parts);
+            default -> "error protocol error";
+        };
+    }
 
-            case "declare":
-                if (parts.length != 2) {
-                    return "error usage: declare <id>";
-                }
+    private String handleElectCommand(String[] parts) {
+        if (parts.length != 2) {
+            return "error usage: elect <id>";
+        }
 
-                return "ack " + broker.getId();
+        broker.electionState = ElectionState.CANDIDATE;
 
-            case "ping":
-                if (parts.length != 1) {
-                    return "error usage: ping";
-                }
-                return "pong";
+        if (broker.getElectionType() == ElectionType.RAFT) {
+            if (!broker.hasVoted) {
+                broker.currentVote = Integer.parseInt(parts[1]);
+                broker.hasVoted = true;
+            }
+            return "vote " + broker.getId() + " " + broker.currentVote;
+        }
 
-            default:
-                return "error protocol error";
+        return "ok";
+    }
+
+    private String handleDeclareCommand(String[] parts) {
+        if (parts.length != 2) {
+            return "error usage: declare <id>";
+        }
+        return "ack " + broker.getId();
+    }
+
+    private String handlePingCommand(String[] parts) {
+        if (parts.length != 1) {
+            return "error usage: ping";
+        }
+        return "pong";
+    }
+
+
+
+    private void closeServerSocket() {
+        if (serverSocket != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                System.out.println("Error closing server socket: " + e.getMessage());
+            }
         }
     }
+
+    public void shutdown() {
+        this.running = false;
+
+        closeServerSocket();
+        if (executor != null) {
+            executor.shutdown();
+        }
+    }
+
 }

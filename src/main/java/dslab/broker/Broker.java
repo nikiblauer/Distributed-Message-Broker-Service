@@ -79,7 +79,7 @@ public class Broker implements IBroker {
 
 
     public void startElectionHandling() {
-        receiver.start(); // Start listening for incoming messages
+        executor.submit(receiver);
 
         // Schedule tasks for monitoring heartbeats
         scheduler.scheduleAtFixedRate(this::monitorHeartbeat, 0, config.electionHeartbeatTimeoutMs(), TimeUnit.MILLISECONDS);
