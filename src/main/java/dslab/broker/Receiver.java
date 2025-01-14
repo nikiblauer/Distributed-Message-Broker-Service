@@ -55,7 +55,7 @@ public class Receiver implements Runnable {
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
             out.println("ok LEP");
-            broker.heartbeatReceived = true; // update heartbeat
+            broker.updateHeartbeat(); // update heartbeat
 
             while(in.hasNextLine()){
                 processClientCommand(in.nextLine(), out);
@@ -107,11 +107,10 @@ public class Receiver implements Runnable {
 
 
         if (broker.getElectionType() == ElectionType.RAFT) {
-            if (!broker.hasVoted) {
-                broker.currentVote = Integer.parseInt(parts[1]);
-                broker.hasVoted = true;
+            if (broker.getCurrentVote() == -1) {
+                broker.vote(Integer.parseInt(parts[1]));
             }
-            return "vote " + broker.getId() + " " + broker.currentVote;
+            return "vote " + broker.getId() + " " + broker.getCurrentVote();
         }
 
         return "ok";

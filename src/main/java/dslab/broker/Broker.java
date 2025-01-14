@@ -24,11 +24,10 @@ public class Broker implements IBroker {
 
     // Leader Election
     private volatile ElectionState electionState;
-    public volatile boolean heartbeatReceived;
+    private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
-    public volatile boolean hasVoted;
-    public volatile int currentVote = -1;
+    private volatile int currentVote;
 
     private final Sender sender;
     private final Receiver receiver;
@@ -40,9 +39,7 @@ public class Broker implements IBroker {
         this.config = config;
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
 
-
         registerDomain(config.domain());
-
 
         this.monitoringClient = new MonitoringClient(config.monitoringHost(), config.monitoringPort(), config.host(), config.port());
 
@@ -61,12 +58,12 @@ public class Broker implements IBroker {
         this.exchanges.put("default", defaultExchange);
 
         // LeaderElection
-
         this.scheduler = Executors.newScheduledThreadPool(
                 0,
                 Thread.ofVirtual().factory()
         );
         this.leader = -1;
+        this.currentVote = -1;
         this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
         this.electionState = ElectionState.FOLLOWER;
 
@@ -79,8 +76,6 @@ public class Broker implements IBroker {
 
     public void startElectionHandling() {
         executor.submit(receiver);
-
-        // Schedule tasks for monitoring heartbeats
         scheduler.scheduleAtFixedRate(this::monitorHeartbeat, 0, config.electionHeartbeatTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
@@ -97,6 +92,18 @@ public class Broker implements IBroker {
 
     public void setElectionState(ElectionState electionState) {
         this.electionState = electionState;
+    }
+
+    public void vote(int id){
+        this.currentVote = id;
+    }
+
+    public int getCurrentVote() {
+        return currentVote;
+    }
+
+    public void updateHeartbeat() {
+        heartbeatReceived = true;
     }
 
     @Override
@@ -183,11 +190,9 @@ public class Broker implements IBroker {
 
                 }
             } else {
-
                 electionState = ElectionState.FOLLOWER;
                 leader = leaderId;
                 currentVote = -1;
-                hasVoted = false;
             }
 
         }
