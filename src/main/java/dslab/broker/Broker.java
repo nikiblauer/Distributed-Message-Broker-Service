@@ -138,63 +138,89 @@ public class Broker implements IBroker {
 
 
     public void handleMessage(String message) {
-        if (message.startsWith("ping")) {
-
-        } else if (message.startsWith("elect")) {
-            electionState = ElectionState.CANDIDATE;
-            sender.closeConnections();
-            if (electionType == ElectionType.RAFT){
-                return;
-            }
-
-
-            int candidateId = Integer.parseInt(message.split(" ")[1]);
-            if (candidateId < getId()) {
-                if (electionType != ElectionType.BULLY) {
-                    sender.sendMessage("elect " + getId());
-                } else {
-                    if(sender.sendMessage("elect " + getId()) == 0){
-
-                        leader = getId();
-                        electionState = ElectionState.LEADER;
-
-                        sender.sendMessage("declare " + getId());
-                        sender.establishConnectionsForLeader();
-                        registerDomain(config.electionDomain());
-                    }
-                }
-            } else if (candidateId > getId()) {
-                sender.sendMessage(message);
-            } else if (candidateId == getId()) {
-                leader = getId();
-                electionState = ElectionState.LEADER;
-
-                sender.sendMessage("declare " + getId());
-                sender.establishConnectionsForLeader();
-                registerDomain(config.electionDomain());
-            }
+        if (message.startsWith("elect")) {
+            handleElect(message);
         } else if (message.startsWith("declare")) {
+            handleDeclare(message);
+        }
+    }
 
-            sender.closeConnections(); // Stop persistent connections if no longer leader
+    private void handleElect(String message) {
+        electionState = ElectionState.CANDIDATE;
+        sender.closeConnections();
 
-            int leaderId = Integer.parseInt(message.split(" ")[1]);
-            if (electionType == ElectionType.RING){
-                if (leaderId == getId()) {
-                    electionState = ElectionState.LEADER;
-                } else {
-                    electionState = ElectionState.FOLLOWER;
-                    leader = leaderId;
+        // If RAFT, stop right here (for RAFT, "elect" logic is done differently).
+        if (electionType == ElectionType.RAFT) {
+            return;
+        }
 
-                    sender.sendMessage(message);
+        int candidateId = parseCandidateId(message);
+        if (candidateId < getId()) {
+            handleLowerCandidateId();
+        } else if (candidateId > getId()) {
+            handleHigherCandidateId(message);
+        } else {
+            // candidateId == getId()
+            becomeLeader();
+        }
+    }
 
-                }
-            } else {
-                electionState = ElectionState.FOLLOWER;
-                leader = leaderId;
-                currentVote = -1;
+    private int parseCandidateId(String message) {
+        // "elect <candidateId>"
+        return Integer.parseInt(message.split(" ")[1]);
+    }
+
+    private void handleLowerCandidateId() {
+        if (electionType != ElectionType.BULLY) {
+            // For non-Bully algorithms, simply send out our own "elect"
+            sender.sendMessage("elect " + getId());
+        } else {
+            // Bully algorithm: If our own "elect" response count is 0, we are the leader
+            if (sender.sendMessage("elect " + getId()) == 0) {
+                becomeLeader();
             }
         }
     }
+
+    private void handleHigherCandidateId(String originalMessage) {
+        // Forward the election message as we found someone with a higher ID
+        sender.sendMessage(originalMessage);
+    }
+
+
+
+    private void handleDeclare(String message) {
+        // If we receive a declare, we’re not the leader anymore.
+        sender.closeConnections();  // Stop persistent connections if no longer the leader
+
+        int leaderId = parseLeaderId(message);
+        if (electionType == ElectionType.RING) {
+            handleDeclareRing(leaderId, message);
+        } else {
+            // For Bully, Raft, etc.
+            electionState = ElectionState.FOLLOWER;
+            leader = leaderId;
+            currentVote = -1;
+        }
+    }
+
+    private int parseLeaderId(String message) {
+        // "declare <leaderId>"
+        return Integer.parseInt(message.split(" ")[1]);
+    }
+
+    private void handleDeclareRing(int leaderId, String originalMessage) {
+        if (leaderId == getId()) {
+            // If the declared leader is myself, transition to LEADER
+            electionState = ElectionState.LEADER;
+        } else {
+            // Otherwise, set ourselves to FOLLOWER and forward the message
+            electionState = ElectionState.FOLLOWER;
+            leader = leaderId;
+            sender.sendMessage(originalMessage);
+        }
+    }
+
 
     @Override
     public void initiateElection() {
