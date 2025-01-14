@@ -50,7 +50,8 @@ public class Sender {
 
                 String response = in.readLine();
 
-                if (!response.equals("ok LEP")){
+
+                if ((response == null) || !response.equals("ok LEP")){
                     continue;
                 }
 
@@ -119,8 +120,11 @@ public class Sender {
         // Send periodic heartbeats
         heartbeatTimer = new Timer();
         heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
+
             @Override
             public void run() {
+                //System.out.println("pinging " + heartbeatConnections.size() + " connections" );
+
                 for (PrintWriter writer : heartbeatWriters.values()) {
                     writer.println("ping");
                 }
@@ -130,6 +134,9 @@ public class Sender {
 
     public void closeConnections() {
         // Stop the heartbeat timer
+        if (heartbeatTimer != null){
+            heartbeatTimer.cancel();
+        }
 
         for (Socket socket : heartbeatConnections.values()) {
             try {
@@ -140,6 +147,7 @@ public class Sender {
         }
         heartbeatConnections.clear();
         heartbeatWriters.clear();
+
     }
 
     public void shutdown() {

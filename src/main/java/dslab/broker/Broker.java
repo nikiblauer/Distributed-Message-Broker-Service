@@ -85,6 +85,7 @@ public class Broker implements IBroker {
     }
 
     private void monitorHeartbeat() {
+        //System.out.println(electionState);
         if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
             //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
@@ -145,6 +146,7 @@ public class Broker implements IBroker {
             heartbeatReceived = true;
         } else if (message.startsWith("elect")) {
             electionState = ElectionState.CANDIDATE;
+            sender.closeConnections();
             if (electionType == ElectionType.RAFT){
                 return;
             }
@@ -214,7 +216,7 @@ public class Broker implements IBroker {
         if (electionType != ElectionType.RAFT) {
             if(sender.sendMessage("elect " + getId()) == 0){
 
-                System.out.println("elect " + getId());
+                //System.out.println("elect " + getId());
                 leader = getId();
                 electionState = ElectionState.LEADER;
                 //System.out.println("Node " + getId() + " is the new leader");
@@ -224,9 +226,11 @@ public class Broker implements IBroker {
                 registerDomain(config.electionDomain());
             }
         } else {
+            //System.out.println("test");
+
             int votes = sender.sendMessage("elect " + getId());
 
-            if (votes > config.electionPeerIds().length/2){
+            if (votes >= config.electionPeerIds().length/2){
                 leader = getId();
                 electionState = ElectionState.LEADER;
                 //System.out.println("Node " + getId() + " is the new leader");
@@ -234,6 +238,9 @@ public class Broker implements IBroker {
                 sender.sendMessage("declare " + getId());
                 sender.establishConnectionsForLeader(); // Establish persistent connections
                 registerDomain(config.electionDomain());
+            } else {
+                electionState = ElectionState.FOLLOWER;
+                //System.out.println("lala");
             }
         }
 
