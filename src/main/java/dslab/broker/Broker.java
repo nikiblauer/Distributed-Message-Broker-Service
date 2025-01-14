@@ -23,7 +23,7 @@ public class Broker implements IBroker {
     private final Map<String, Queue> queues;
 
     // Leader Election
-    public volatile ElectionState electionState;
+    private volatile ElectionState electionState;
     public volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
@@ -99,6 +99,10 @@ public class Broker implements IBroker {
 
     public ElectionState getElectionState() {
         return electionState;
+    }
+
+    public void setElectionState(ElectionState electionState) {
+        this.electionState = electionState;
     }
 
     @Override

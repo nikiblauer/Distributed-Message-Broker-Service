@@ -103,7 +103,7 @@ public class Receiver implements Runnable {
             return "error usage: elect <id>";
         }
 
-        broker.electionState = ElectionState.CANDIDATE;
+        broker.setElectionState(ElectionState.CANDIDATE);
 
         if (broker.getElectionType() == ElectionType.RAFT) {
             if (!broker.hasVoted) {
