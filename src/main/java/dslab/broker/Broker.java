@@ -34,7 +34,6 @@ public class Broker implements IBroker {
     private final ScheduledExecutorService scheduler;
 
 
-
     public Broker(BrokerConfig config) {
         this.config = config;
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -194,37 +193,38 @@ public class Broker implements IBroker {
                 leader = leaderId;
                 currentVote = -1;
             }
-
         }
     }
 
     @Override
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-        if (electionType != ElectionType.RAFT) {
-            if(sender.sendMessage("elect " + getId()) == 0){
-                leader = getId();
-                electionState = ElectionState.LEADER;
 
-                sender.sendMessage("declare " + getId());
-                sender.establishConnectionsForLeader(); // Establish persistent connections
-                registerDomain(config.electionDomain());
-            }
-        } else {
-            int votes = sender.sendMessage("elect " + getId());
+        // Send election request
+        int votes = sender.sendMessage("elect " + getId());
 
-            if (votes >= config.electionPeerIds().length/2){
-                leader = getId();
-                electionState = ElectionState.LEADER;
-                sender.sendMessage("declare " + getId());
-                sender.establishConnectionsForLeader(); // Establish persistent connections
-                registerDomain(config.electionDomain());
-            } else {
-                electionState = ElectionState.CANDIDATE;
-            }
+        // Determine if we have enough votes (or no opposition in non-RAFT)
+        boolean hasWon = (electionType == ElectionType.RAFT)
+                ? (votes >= config.electionPeerIds().length / 2)
+                : (votes == 0);
+
+        // If the node wins, complete the process of becoming leader
+        if (hasWon) {
+            becomeLeader();
         }
-
     }
+
+    private void becomeLeader() {
+        leader = getId();
+        electionState = ElectionState.LEADER;
+
+        sender.sendMessage("declare " + getId());
+        sender.establishConnectionsForLeader(); // Establish persistent connections
+
+        // Additional domain registration or similar actions can go here
+        registerDomain(config.electionDomain());
+    }
+
 
     @Override
     public int getLeader() {
