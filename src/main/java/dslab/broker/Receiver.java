@@ -89,15 +89,20 @@ public class Receiver {
 
         switch (cmd) {
             case "elect":
+                broker.electionState = ElectionState.CANDIDATE;
                 if (parts.length != 2) {
                     return "error usage: elect <id>";
                 }
                 if (broker.getElectionType() == ElectionType.RAFT) {
-                    if (broker.getElectionState() != ElectionState.CANDIDATE){
-                        broker.incTerm();
+                    if (!broker.hasVoted){
                         broker.currentVote = Integer.parseInt(parts[1]);
-                        return "vote " + broker.getId() + " " + parts[1];
+                        broker.incTerm();
+                        broker.hasVoted = true;
+                        //System.out.println("EINS " + broker.currentVote);
+                        return "vote " + broker.getId() + " " + broker.currentVote;
                     } else {
+                        //System.out.println("ZWEI");
+
                         return "vote " + broker.getId() + " " + broker.currentVote;
                     }
                 }

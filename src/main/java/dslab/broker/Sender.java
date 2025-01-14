@@ -41,7 +41,6 @@ public class Sender {
                 }
             }
 
-            //System.out.println("Sending message: " + message + " to " + host + ":" + port);
 
             try (Socket socket = new Socket(host, port);
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

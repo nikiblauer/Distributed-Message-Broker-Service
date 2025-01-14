@@ -23,11 +23,12 @@ public class Broker implements IBroker {
     private final Map<String, Queue> queues;
 
     // Leader Election
-    private volatile ElectionState electionState;
+    public volatile ElectionState electionState;
     private volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
     private volatile int term;
+    public volatile boolean hasVoted;
     public volatile int currentVote = -1;
 
     private final Sender sender;
@@ -198,10 +199,13 @@ public class Broker implements IBroker {
 
                 }
             } else {
+                sender.closeConnections(); // Stop persistent connections if no longer leader
+
                 electionState = ElectionState.FOLLOWER;
                 leader = leaderId;
+                currentVote = -1;
+                hasVoted = false;
 
-                sender.closeConnections(); // Stop persistent connections if no longer leader
                 //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
             }
 
@@ -227,7 +231,7 @@ public class Broker implements IBroker {
             }
         } else {
             //System.out.println("test");
-
+            //System.out.println("hallo "+ electionState);
             int votes = sender.sendMessage("elect " + getId());
 
             if (votes >= config.electionPeerIds().length/2){
