@@ -24,7 +24,7 @@ public class Broker implements IBroker {
 
     // Leader Election
     public volatile ElectionState electionState;
-    private volatile boolean heartbeatReceived;
+    public volatile boolean heartbeatReceived;
     private final ElectionType electionType;
     private volatile int leader;
     public volatile boolean hasVoted;
@@ -85,7 +85,6 @@ public class Broker implements IBroker {
     }
 
     private void monitorHeartbeat() {
-        System.out.println(electionState);
         if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
             //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
@@ -136,7 +135,7 @@ public class Broker implements IBroker {
 
     public void handleMessage(String message) {
         if (message.startsWith("ping")) {
-            heartbeatReceived = true;
+
         } else if (message.startsWith("elect")) {
             electionState = ElectionState.CANDIDATE;
             sender.closeConnections();

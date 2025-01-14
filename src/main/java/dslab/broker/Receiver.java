@@ -60,7 +60,7 @@ public class Receiver {
             out.println("ok LEP");
 
             // Read the command from the client
-
+            broker.heartbeatReceived = true;
             while(in.hasNextLine()){
                 String command = in.nextLine();
                 if (command != null) {
