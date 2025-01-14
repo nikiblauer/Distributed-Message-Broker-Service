@@ -61,9 +61,10 @@ public class Broker implements IBroker {
         this.exchanges.put("default", defaultExchange);
 
         // LeaderElection
+
         this.scheduler = Executors.newScheduledThreadPool(
-                0, // No core threads
-                Thread.ofVirtual().factory() // Virtual thread factory
+                0,
+                Thread.ofVirtual().factory()
         );
         this.leader = -1;
         this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
@@ -86,7 +87,6 @@ public class Broker implements IBroker {
 
     private void monitorHeartbeat() {
         if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
-            //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
         }
         heartbeatReceived = false;
@@ -146,7 +146,6 @@ public class Broker implements IBroker {
 
             int candidateId = Integer.parseInt(message.split(" ")[1]);
             if (candidateId < getId()) {
-                //System.out.println("Node " + getId() + " is replacing candidate " + candidateId + " with its own ID in election");
                 if (electionType != ElectionType.BULLY) {
                     sender.sendMessage("elect " + getId());
                 } else {
@@ -154,10 +153,9 @@ public class Broker implements IBroker {
 
                         leader = getId();
                         electionState = ElectionState.LEADER;
-                        //System.out.println("Node " + getId() + " is the new leader");
 
                         sender.sendMessage("declare " + getId());
-                        sender.establishConnectionsForLeader(); // Establish persistent connections
+                        sender.establishConnectionsForLeader();
                         registerDomain(config.electionDomain());
                     }
                 }
@@ -166,10 +164,9 @@ public class Broker implements IBroker {
             } else if (candidateId == getId()) {
                 leader = getId();
                 electionState = ElectionState.LEADER;
-                //System.out.println("Node " + getId() + " is the new leader");
 
                 sender.sendMessage("declare " + getId());
-                sender.establishConnectionsForLeader(); // Establish persistent connections
+                sender.establishConnectionsForLeader();
                 registerDomain(config.electionDomain());
             }
         } else if (message.startsWith("declare")) {
@@ -180,12 +177,10 @@ public class Broker implements IBroker {
             if (electionType == ElectionType.RING){
                 if (leaderId == getId()) {
                     electionState = ElectionState.LEADER;
-                    //System.out.println("Node " + getId() + " acknowledges it is the leader");
                 } else {
                     electionState = ElectionState.FOLLOWER;
                     leader = leaderId;
 
-                    //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
                     sender.sendMessage(message);
 
                 }
@@ -195,8 +190,6 @@ public class Broker implements IBroker {
                 leader = leaderId;
                 currentVote = -1;
                 hasVoted = false;
-
-                //System.out.println("Node " + getId() + " recognizes Node " + leaderId + " as leader");
             }
 
         }
@@ -205,35 +198,26 @@ public class Broker implements IBroker {
     @Override
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-        //System.out.println("test");
         if (electionType != ElectionType.RAFT) {
             if(sender.sendMessage("elect " + getId()) == 0){
-
-                //System.out.println("elect " + getId());
                 leader = getId();
                 electionState = ElectionState.LEADER;
-                //System.out.println("Node " + getId() + " is the new leader");
 
                 sender.sendMessage("declare " + getId());
                 sender.establishConnectionsForLeader(); // Establish persistent connections
                 registerDomain(config.electionDomain());
             }
         } else {
-            //System.out.println("test");
-            //System.out.println("hallo "+ electionState);
             int votes = sender.sendMessage("elect " + getId());
 
             if (votes >= config.electionPeerIds().length/2){
                 leader = getId();
                 electionState = ElectionState.LEADER;
-                //System.out.println("Node " + getId() + " is the new leader");
-
                 sender.sendMessage("declare " + getId());
                 sender.establishConnectionsForLeader(); // Establish persistent connections
                 registerDomain(config.electionDomain());
             } else {
                 electionState = ElectionState.CANDIDATE;
-                //System.out.println("lala");
             }
         }
 
@@ -259,15 +243,13 @@ public class Broker implements IBroker {
 
         monitoringClient.shutdown();
 
-
-
         try {
             if (serverSocket != null) {
                 serverSocket.close();
             }
         } catch (IOException e) {
             System.err.println("error closing server socket: " + e.getMessage());
-            throw new RuntimeException(e);
+            System.err.println(e.getMessage());
         }
 
         for (BrokerClientHandler handler : threadMap.values()) {

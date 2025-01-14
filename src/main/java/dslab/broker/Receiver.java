@@ -24,7 +24,7 @@ public class Receiver {
                 serverSocket = new ServerSocket(broker.getConfig().electionPort());
                 while (running) {
                     try {
-                        Socket clientSocket = serverSocket.accept(); // Accept a connection
+                        Socket clientSocket = serverSocket.accept();
                         Thread.ofVirtual().start(() -> handleConnection(clientSocket)); // Use a virtual thread to handle the connection
                     } catch (SocketException e) {
 
@@ -44,23 +44,19 @@ public class Receiver {
             try {
                 serverSocket.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                System.out.println("Error closing server socket: " + e.getMessage());
             }
         }
     }
 
     private void handleConnection(Socket clientSocket) {
-
-
         try (clientSocket;
              Scanner in = new Scanner(clientSocket.getInputStream());
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-            // Respond with "ok LEP" on a new connection
             out.println("ok LEP");
 
-            // Read the command from the client
-            broker.heartbeatReceived = true;
+            broker.heartbeatReceived = true; // update heartbeat
             while(in.hasNextLine()){
                 String command = in.nextLine();
                 if (command != null) {
@@ -74,8 +70,6 @@ public class Receiver {
 
                 }
             }
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -97,13 +91,8 @@ public class Receiver {
                     if (!broker.hasVoted){
                         broker.currentVote = Integer.parseInt(parts[1]);
                         broker.hasVoted = true;
-                        //System.out.println("EINS " + broker.currentVote);
-                        return "vote " + broker.getId() + " " + broker.currentVote;
-                    } else {
-                        //System.out.println("ZWEI");
-
-                        return "vote " + broker.getId() + " " + broker.currentVote;
                     }
+                    return "vote " + broker.getId() + " " + broker.currentVote;
                 }
                 return "ok";
 
@@ -111,9 +100,8 @@ public class Receiver {
                 if (parts.length != 2) {
                     return "error usage: declare <id>";
                 }
-                int leaderId = Integer.parseInt(parts[1]);
 
-                return "ack" + leaderId;
+                return "ack " + broker.getId();
 
             case "ping":
                 if (parts.length != 1) {

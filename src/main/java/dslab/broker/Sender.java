@@ -70,14 +70,9 @@ public class Sender {
                         }
 
                     }
-
-
-
                 }
-
-
             } catch (IOException e) {
-                //System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
+                System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
             }
 
         }
@@ -108,10 +103,8 @@ public class Sender {
 
                 heartbeatConnections.put(peerID, socket);
                 heartbeatWriters.put(peerID, writer);
-
-                //System.out.println("Leader " + broker.getId() + " established persistent connection to Node " + peerID + " at port " + port);
             } catch (IOException e) {
-                //System.out.println("Leader " + broker.getId() + ": Unable to establish connection to Node " + peerID + " at port " + port);
+                System.out.println("Unable to establish connection to Node " + peerID + " at port " + port);
             }
 
         }
@@ -119,11 +112,8 @@ public class Sender {
         // Send periodic heartbeats
         heartbeatTimer = new Timer();
         heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
-
             @Override
             public void run() {
-                //System.out.println("pinging " + heartbeatConnections.size() + " connections" );
-
                 for (PrintWriter writer : heartbeatWriters.values()) {
                     writer.println("ping");
                 }
@@ -132,7 +122,7 @@ public class Sender {
     }
 
     public void closeConnections() {
-        // Stop the heartbeat timer
+        // Stop the heartbeat timer, when no longer leader
         if (heartbeatTimer != null){
             heartbeatTimer.cancel();
         }
@@ -141,7 +131,8 @@ public class Sender {
             try {
                 socket.close();
             } catch (IOException e) {
-                //System.out.println("Node " + broker.getId() + ": Error closing connection");
+                System.out.println("Node " + broker.getId() + ": Error closing connection");
+                System.out.println(e.getMessage());
             }
         }
         heartbeatConnections.clear();
