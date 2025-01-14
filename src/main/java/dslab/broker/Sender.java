@@ -1,6 +1,8 @@
 package dslab.broker;
 
 import dslab.broker.enums.ElectionType;
+import dslab.config.BrokerConfig;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -8,19 +10,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Sender {
     private final Broker broker;
-    private final int[] peerIds;
-    private final String[] peerHosts;
-    private final int[] peerPorts;
+
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
-    private Timer heartbeatTimer;
+    private Timer heartbeatTimer; // Reference to the heartbeat timer
     private boolean running;
 
     public Sender(Broker broker) {
         this.broker = broker;
-        this.peerIds = this.broker.getConfig().electionPeerIds();
-        this.peerHosts = this.broker.getConfig().electionPeerHosts();
-        this.peerPorts = this.broker.getConfig().electionPeerPorts();
         this.running = true;
     }
 
@@ -33,7 +30,10 @@ public class Sender {
         int votes = 0;
 
 
-        for (int i = 0; i < peerIds.length; i++) {
+        for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
+            String host = broker.getConfig().electionPeerHosts()[i];
+            int port = broker.getConfig().electionPeerPorts()[i];
+
             if ((broker.getElectionType() == ElectionType.BULLY) && message.startsWith("elect"))
             {
                 if (broker.getId() > broker.getConfig().electionPeerIds()[i]){
@@ -42,19 +42,20 @@ public class Sender {
             }
 
 
-            try (Socket socket = new Socket(peerHosts[i], peerPorts[i]);
+            try (Socket socket = new Socket(host, port);
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
 
                 String response = in.readLine();
+
+
                 if ((response == null) || !response.equals("ok LEP")){
                     continue;
                 }
 
                 out.println(message);
                 response = in.readLine();
-
                 if (response != null){
                     success = true;
                     if (broker.getElectionType() == ElectionType.RING){
@@ -67,11 +68,13 @@ public class Sender {
                                 votes += 1;
                             }
                         }
+
                     }
                 }
             } catch (IOException e) {
-                System.out.println("Unable to contact Node " + peerIds[i]);
+                System.out.println("Node " + broker.getId() + ": Unable to contact Node " + broker.getConfig().electionPeerIds()[i] + " at port " + port);
             }
+
         }
 
         if (broker.getElectionType() == ElectionType.RAFT){
@@ -81,67 +84,57 @@ public class Sender {
         return success ? 1 : 0;
     }
 
-
     public void establishConnectionsForLeader() {
         if (!running){
             return;
         }
-
         closeConnections(); // Ensure no stale connections
 
-        for (int i = 0; i < peerIds.length; i++) {
+        for (int i = 0; i < broker.getConfig().electionPeerIds().length; i++) {
+            String host = broker.getConfig().electionPeerHosts()[i];
+            int port = broker.getConfig().electionPeerPorts()[i];
+            int peerID = broker.getConfig().electionPeerIds()[i];
+
+
             try {
-                establishConnection(peerIds[i], peerHosts[i], peerPorts[i]);
+                Socket socket = new Socket(host, port);
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+
+                heartbeatConnections.put(peerID, socket);
+                heartbeatWriters.put(peerID, writer);
             } catch (IOException e) {
-                System.out.println("Unable to establish connection to Node " + peerIds[i]);
+                System.out.println("Unable to establish connection to Node " + peerID + " at port " + port);
             }
+
         }
-        startHeartbeat();
-    }
 
-    private void establishConnection(int peerId, String host, int port) throws IOException {
-        Socket socket = new Socket(host, port);
-        PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
-
-        heartbeatConnections.put(peerId, socket);
-        heartbeatWriters.put(peerId, writer);
-    }
-
-
-    private void startHeartbeat() {
         // Send periodic heartbeats
         heartbeatTimer = new Timer();
         heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                sendHeartbeat();
+                for (PrintWriter writer : heartbeatWriters.values()) {
+                    writer.println("ping");
+                }
             }
         }, 0, 20);
     }
 
-    private void sendHeartbeat() {
-        for (PrintWriter writer : heartbeatWriters.values()) {
-            writer.println("ping");
-        }
-    }
-
-    private void stopHeartbeat() {
-        if (heartbeatTimer != null) {
+    public void closeConnections() {
+        // Stop the heartbeat timer, when no longer leader
+        if (heartbeatTimer != null){
             heartbeatTimer.cancel();
         }
-    }
 
-    public void closeConnections() {
-        stopHeartbeat();
-
-        heartbeatConnections.values().forEach(socket -> {
+        for (Socket socket : heartbeatConnections.values()) {
             try {
                 socket.close();
             } catch (IOException e) {
+                System.out.println("Node " + broker.getId() + ": Error closing connection");
                 System.out.println(e.getMessage());
             }
-        });
-
+        }
         heartbeatConnections.clear();
         heartbeatWriters.clear();
 
