@@ -47,12 +47,13 @@ public class Sender {
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
 
-                if (!"ok LEP".equals(in.readLine())) {
+                String response = in.readLine();
+                if ((response == null) || !response.equals("ok LEP")){
                     continue;
                 }
 
                 out.println(message);
-                String response = in.readLine();
+                response = in.readLine();
 
                 if (response != null){
                     success = true;
@@ -66,7 +67,6 @@ public class Sender {
                                 votes += 1;
                             }
                         }
-
                     }
                 }
             } catch (IOException e) {
@@ -120,7 +120,9 @@ public class Sender {
     }
 
     private void sendHeartbeat() {
-        heartbeatWriters.values().forEach(writer -> writer.println("ping"));
+        for (PrintWriter writer : heartbeatWriters.values()) {
+            writer.println("ping");
+        }
     }
 
     private void stopHeartbeat() {
