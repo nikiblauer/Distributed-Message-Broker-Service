@@ -68,7 +68,7 @@ public class Receiver implements Runnable {
     }
 
     private void processClientCommand(String command, PrintWriter out) {
-        if (command == null || command.isEmpty()) {
+        if (command == null) {
             return;
         }
 
@@ -99,11 +99,12 @@ public class Receiver implements Runnable {
     }
 
     private String handleElectCommand(String[] parts) {
+        broker.setElectionState(ElectionState.CANDIDATE);
+
         if (parts.length != 2) {
             return "error usage: elect <id>";
         }
 
-        broker.setElectionState(ElectionState.CANDIDATE);
 
         if (broker.getElectionType() == ElectionType.RAFT) {
             if (!broker.hasVoted) {

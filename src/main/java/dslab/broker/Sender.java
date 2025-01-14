@@ -14,15 +14,21 @@ public class Sender {
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
     private Timer heartbeatTimer;
+    private boolean running;
 
     public Sender(Broker broker) {
         this.broker = broker;
         this.peerIds = this.broker.getConfig().electionPeerIds();
         this.peerHosts = this.broker.getConfig().electionPeerHosts();
         this.peerPorts = this.broker.getConfig().electionPeerPorts();
+        this.running = true;
     }
 
     public int sendMessage(String message) {
+        if (!running){
+            return 1;
+        }
+
         boolean success = false;
         int votes = 0;
 
@@ -77,6 +83,10 @@ public class Sender {
 
 
     public void establishConnectionsForLeader() {
+        if (!running){
+            return;
+        }
+
         closeConnections(); // Ensure no stale connections
 
         for (int i = 0; i < peerIds.length; i++) {
@@ -136,6 +146,7 @@ public class Sender {
     }
 
     public void shutdown() {
+        this.running = false;
         closeConnections();
     }
 }

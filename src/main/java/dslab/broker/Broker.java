@@ -74,7 +74,6 @@ public class Broker implements IBroker {
         this.receiver = new Receiver(this);
         this.heartbeatReceived = true;
         startElectionHandling();
-
     }
 
 
@@ -94,11 +93,6 @@ public class Broker implements IBroker {
 
     public BrokerConfig getConfig() {
         return config;
-    }
-
-
-    public ElectionState getElectionState() {
-        return electionState;
     }
 
     public void setElectionState(ElectionState electionState) {
