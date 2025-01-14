@@ -85,7 +85,7 @@ public class Broker implements IBroker {
     }
 
     private void monitorHeartbeat() {
-        //System.out.println(electionState);
+        System.out.println(electionState);
         if ((electionState == ElectionState.FOLLOWER) && !heartbeatReceived) {
             //System.out.println("Node " + getId() + " detected leader failure (Timeout: " + config.electionHeartbeatTimeoutMs() + "ms)");
             initiateElection();
@@ -206,7 +206,7 @@ public class Broker implements IBroker {
     @Override
     public void initiateElection() {
         electionState = ElectionState.CANDIDATE;
-
+        //System.out.println("test");
         if (electionType != ElectionType.RAFT) {
             if(sender.sendMessage("elect " + getId()) == 0){
 
@@ -233,7 +233,7 @@ public class Broker implements IBroker {
                 sender.establishConnectionsForLeader(); // Establish persistent connections
                 registerDomain(config.electionDomain());
             } else {
-                electionState = ElectionState.FOLLOWER;
+                electionState = ElectionState.CANDIDATE;
                 //System.out.println("lala");
             }
         }
