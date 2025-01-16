@@ -39,6 +39,7 @@ public class Receiver implements Runnable {
     private void acceptClientConnections(){
         try {
             Socket clientSocket = serverSocket.accept();
+            clientSocket.setSoTimeout(5000);
             executor.submit(() -> handleConnection(clientSocket));
         } catch (SocketException e) {
             if (running) {

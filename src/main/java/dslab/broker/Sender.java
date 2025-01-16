@@ -44,6 +44,7 @@ public class Sender {
                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
+                socket.setSoTimeout(5000);
 
                 String response = in.readLine();
 
