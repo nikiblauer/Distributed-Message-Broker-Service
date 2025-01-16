@@ -55,7 +55,7 @@ public class Receiver implements Runnable {
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
             out.println("ok LEP");
-            broker.updateHeartbeat(); // update heartbeat
+            broker.updateHeartbeat(); // update heartbeat, directly after connection
 
             while(in.hasNextLine()){
                 processClientCommand(in.nextLine(), out);
@@ -127,6 +127,9 @@ public class Receiver implements Runnable {
         if (parts.length != 1) {
             return "error usage: ping";
         }
+
+        broker.updateHeartbeat(); // update heartbeat when ping received
+
         return "pong";
     }
 
