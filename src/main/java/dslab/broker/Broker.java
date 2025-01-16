@@ -29,9 +29,9 @@ public class Broker implements IBroker {
     private volatile int leader;
     private volatile int currentVote;
 
-    private final Sender sender;
-    private final Receiver receiver;
-    private final ScheduledExecutorService scheduler;
+    private Sender sender;
+    private Receiver receiver;
+    private ScheduledExecutorService scheduler;
 
 
     public Broker(BrokerConfig config) {
@@ -56,24 +56,28 @@ public class Broker implements IBroker {
         Exchange defaultExchange = new Exchange(ExchangeType.DEFAULT, "default");
         this.exchanges.put("default", defaultExchange);
 
-        // LeaderElection
-        this.scheduler = Executors.newScheduledThreadPool(
-                0,
-                Thread.ofVirtual().factory()
-        );
-        this.leader = -1;
-        this.currentVote = -1;
-        this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
-        this.electionState = ElectionState.FOLLOWER;
 
-        this.sender = new Sender(this);
-        this.receiver = new Receiver(this);
-        this.heartbeatReceived = true;
-        startElectionHandling();
+        // LeaderElection
+        this.electionType = ElectionType.valueOf(this.config.electionType().toUpperCase());
+
+        if (electionType != ElectionType.NONE) {
+            this.scheduler = Executors.newScheduledThreadPool(
+                    0,
+                    Thread.ofVirtual().factory()
+            );
+            this.leader = -1;
+            this.currentVote = -1;
+            this.electionState = ElectionState.FOLLOWER;
+            this.sender = new Sender(this);
+            this.receiver = new Receiver(this);
+            this.heartbeatReceived = true;
+            startElectionHandling();
+        }
+
     }
 
 
-    public void startElectionHandling() {
+    private void startElectionHandling() {
         executor.submit(receiver);
         scheduler.scheduleAtFixedRate(this::monitorHeartbeat, 0, config.electionHeartbeatTimeoutMs(), TimeUnit.MILLISECONDS);
     }
@@ -116,7 +120,7 @@ public class Broker implements IBroker {
                 executor.submit(handler);
             } catch (IOException e) {
                 if (running){
-                    //System.err.println("error accepting client connection: " + e.getMessage());
+                    System.err.println("error accepting client connection: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
@@ -138,6 +142,9 @@ public class Broker implements IBroker {
 
 
     public void handleMessage(String message) {
+        if(electionType == ElectionType.NONE)
+            return;
+
         if (message.startsWith("elect")) {
             handleElect(message);
         } else if (message.startsWith("declare")) {
@@ -149,7 +156,6 @@ public class Broker implements IBroker {
         electionState = ElectionState.CANDIDATE;
         sender.closeConnections();
 
-        // If RAFT, stop right here (for RAFT, "elect" logic is done differently).
         if (electionType == ElectionType.RAFT) {
             return;
         }
@@ -166,7 +172,6 @@ public class Broker implements IBroker {
     }
 
     private int parseCandidateId(String message) {
-        // "elect <candidateId>"
         return Integer.parseInt(message.split(" ")[1]);
     }
 
@@ -190,14 +195,12 @@ public class Broker implements IBroker {
 
 
     private void handleDeclare(String message) {
-        // If we receive a declare, we’re not the leader anymore.
         sender.closeConnections();  // Stop persistent connections if no longer the leader
 
         int leaderId = parseLeaderId(message);
         if (electionType == ElectionType.RING) {
             handleDeclareRing(leaderId, message);
         } else {
-            // For Bully, Raft, etc.
             electionState = ElectionState.FOLLOWER;
             leader = leaderId;
             currentVote = -1;
@@ -205,7 +208,6 @@ public class Broker implements IBroker {
     }
 
     private int parseLeaderId(String message) {
-        // "declare <leaderId>"
         return Integer.parseInt(message.split(" ")[1]);
     }
 
@@ -224,6 +226,9 @@ public class Broker implements IBroker {
 
     @Override
     public void initiateElection() {
+        if(electionType == ElectionType.NONE)
+            return;
+
         electionState = ElectionState.CANDIDATE;
 
         // Send election request
@@ -247,7 +252,6 @@ public class Broker implements IBroker {
         sender.sendMessage("declare " + getId());
         sender.establishConnectionsForLeader(); // Establish persistent connections
 
-        // Additional domain registration or similar actions can go here
         registerDomain(config.electionDomain());
     }
 
@@ -265,9 +269,11 @@ public class Broker implements IBroker {
     @Override
     public void shutdown() {
         running = false;
-        scheduler.shutdown();
-        receiver.shutdown();
-        sender.shutdown();
+        if (electionType != ElectionType.NONE){
+            scheduler.shutdown();
+            receiver.shutdown();
+            sender.shutdown();
+        }
 
 
         monitoringClient.shutdown();
