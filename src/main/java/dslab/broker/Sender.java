@@ -7,6 +7,9 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Sender {
     private final Broker broker;
@@ -16,7 +19,7 @@ public class Sender {
 
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
-    private Timer heartbeatTimer; // Reference to the heartbeat timer
+    private ScheduledExecutorService heartbeatExecutor;
 
     public Sender(Broker broker) {
         this.broker = broker;
@@ -103,22 +106,30 @@ public class Sender {
     }
 
     private void startHeartbeatTimer() {
-        // Send periodic heartbeats
-        heartbeatTimer = new Timer();
-        heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                for (PrintWriter writer : heartbeatWriters.values()) {
-                    writer.println("ping");
-                }
+        heartbeatExecutor = Executors.newScheduledThreadPool(
+                1,
+                Thread.ofVirtual().factory()
+        );
+
+        heartbeatExecutor.scheduleAtFixedRate(() -> {
+            for (PrintWriter writer : heartbeatWriters.values()) {
+                writer.println("ping");
             }
-        }, 0, 20);
+        }, 0, 20, TimeUnit.MILLISECONDS);
     }
 
     private void stopHeartbeatTimer() {
-        // Stop the heartbeat timer, when no longer leader
-        if (heartbeatTimer != null){
-            heartbeatTimer.cancel();
+        // Gracefully shut down the executor
+        if (heartbeatExecutor != null && !heartbeatExecutor.isShutdown()) {
+            heartbeatExecutor.shutdown();
+            try {
+                if (!heartbeatExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    heartbeatExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                heartbeatExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
