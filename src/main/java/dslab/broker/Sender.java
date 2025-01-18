@@ -19,7 +19,7 @@ public class Sender {
 
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
-    private ScheduledExecutorService heartbeatExecutor;
+    private Timer heartbeatTimer;
 
     public Sender(Broker broker) {
         this.broker = broker;
@@ -106,32 +106,25 @@ public class Sender {
     }
 
     private void startHeartbeatTimer() {
-        heartbeatExecutor = Executors.newScheduledThreadPool(
-                1,
-                Thread.ofVirtual().factory()
-        );
-
-        heartbeatExecutor.scheduleAtFixedRate(() -> {
-            for (PrintWriter writer : heartbeatWriters.values()) {
-                writer.println("ping");
+        // Send periodic heartbeats
+        heartbeatTimer = new Timer();
+        heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                for (PrintWriter writer : heartbeatWriters.values()) {
+                    writer.println("ping");
+                }
             }
-        }, 0, 20, TimeUnit.MILLISECONDS);
+        }, 0, 20);
     }
 
     private void stopHeartbeatTimer() {
-        // Gracefully shut down the executor
-        if (heartbeatExecutor != null && !heartbeatExecutor.isShutdown()) {
-            heartbeatExecutor.shutdown();
-            try {
-                if (!heartbeatExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    heartbeatExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                heartbeatExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+        // Stop the heartbeat timer, when no longer leader
+        if (heartbeatTimer != null){
+            heartbeatTimer.cancel();
         }
     }
+
 
     public void closeConnections() {
         stopHeartbeatTimer();
