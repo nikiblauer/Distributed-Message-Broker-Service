@@ -7,9 +7,6 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class Sender {
     private final Broker broker;
@@ -19,7 +16,7 @@ public class Sender {
 
     private final Map<Integer, Socket> heartbeatConnections = new ConcurrentHashMap<>();
     private final Map<Integer, PrintWriter> heartbeatWriters = new ConcurrentHashMap<>();
-    private Timer heartbeatTimer;
+    private Timer heartbeatTimer; // Reference to the heartbeat timer
 
     public Sender(Broker broker) {
         this.broker = broker;
@@ -124,7 +121,6 @@ public class Sender {
             heartbeatTimer.cancel();
         }
     }
-
 
     public void closeConnections() {
         stopHeartbeatTimer();
