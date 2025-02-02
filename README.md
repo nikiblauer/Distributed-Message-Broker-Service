@@ -1,8 +1,19 @@
+# Distributed Message Broker Service
+
+## Description
+This code implements a distributed message broker service that follows a simplified version of the AMQP protocol. The system is designed to support multiple message brokers running simultaneously, each registering itself with a custom DNS service to maintain an updated view of the broker cluster.
+
+A message broker acts as an intermediary between clients, handling their requests and ensuring reliable message delivery. It manages exchanges and queues, which are core components of the message routing process. Clients can publish messages to an exchange, which then routes these messages to one or more queues based on predefined rules and routing keys. Other clients can bind to these queues to receive messages asynchronously, enabling scalable and decoupled communication between producers and consumers.
+
+To ensure high availability and fault tolerance, the system includes a mechanism for automatic leader election. If a message broker fails, the remaining brokers detect the failure and initiate a leader election process using one of three algorithms: Raft, Ring, or Bully. Once a new leader is elected, it takes over the coordination responsibilities and updates the DNS service to reflect the current state of the broker cluster. This dynamic leadership transition ensures that message routing and delivery continue without interruption, maintaining system stability and reliability.
+
+By distributing the workload across multiple brokers and implementing robust failure recovery mechanisms, this service provides a scalable and resilient messaging infrastructure for distributed applications.
+
 
 ## Table of Contents
 - [General](#General)
 - [Protocols](#Protocols)
-- [Testing](#Testing)
+
 
 # General
 
