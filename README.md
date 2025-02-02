@@ -1,5 +1,7 @@
 # Distributed Message Broker Service
 
+![header](header.webp)
+
 ## Description
 This code implements a distributed message broker service that follows a simplified version of the AMQP protocol. The system is designed to support multiple message brokers running simultaneously, each registering itself with a custom DNS service to maintain an updated view of the broker cluster.
 
