@@ -3,6 +3,8 @@
 ![header](header.webp)
 
 ## Description
+*Link to client application: [https://github.com/nikiblauer/Distributed-Message-Broker-Service-Client](https://github.com/nikiblauer/Distributed-Message-Broker-Service-Client)*
+
 This code implements a distributed message broker service that follows a simplified version of the AMQP protocol. The system is designed to support multiple message brokers running simultaneously, each registering itself with a custom DNS service to maintain an updated view of the broker cluster.
 
 A message broker acts as an intermediary between clients, handling their requests and ensuring reliable message delivery. It manages exchanges and queues, which are core components of the message routing process. Clients can publish messages to an exchange, which then routes these messages to one or more queues based on predefined rules and routing keys. Other clients can bind to these queues to receive messages asynchronously, enabling scalable and decoupled communication between producers and consumers.
